@@ -109,7 +109,7 @@ async def scrape_all(run: SourceRun, urls: list[str]) -> None:
 
         async def worker():
             page = await context.new_page()
-            while not queue.empty():
+            while not queue.empty() and not run.should_stop():
                 url = queue.get_nowait()
                 for attempt in range(RETRIES):
                     try:

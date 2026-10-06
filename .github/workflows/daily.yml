@@ -22,6 +22,7 @@ env:
   MASAR_SITE_DIR: ${{ github.workspace }}/site
   # History for the very first run (the old site's jobs.json).
   SEED_JOBS_URL: https://raw.githubusercontent.com/Abdallah-Sami/Job_Data_pipeline/gh-pages/jobs.json
+  SCRAPER_MAX_MINUTES: "40"   # each scraper stops itself before its step timeout
   REPO_URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
   # Optional proxy (add these as repository secrets only if you need one)
   PROXY_ENABLED: ${{ secrets.PROXY_ENABLED }}

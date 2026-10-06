@@ -21,10 +21,10 @@ import sys
 import time
 from urllib.parse import urljoin
 
-import requests
 from bs4 import BeautifulSoup
 
 from masar.sources.base import SourceRun, env_int, get_logger, make_session
+from masar.sources.fetcher import Fetcher
 
 SOURCE = "wuzzuf"
 SEARCH_URL = "https://wuzzuf.net/saudi/search/jobs?filters%5Bcountry%5D%5B0%5D=Saudi%20Arabia"
@@ -113,23 +113,7 @@ def parse_job_page(html: str, url: str) -> dict | None:
     }
 
 
-def fetch(session: requests.Session, url: str, params=None) -> requests.Response | None:
-    for attempt in range(1, 4):
-        try:
-            resp = session.get(url, params=params, timeout=TIMEOUT)
-        except (requests.RequestException, OSError) as e:
-            log.warning("Request failed (%s) attempt %d: %s", url, attempt, e)
-            time.sleep(5 * attempt)
-            continue
-        if resp.status_code in (403, 429):
-            time.sleep(5 * attempt)
-            continue
-        resp.encoding = resp.apparent_encoding or "utf-8"
-        return resp
-    return None
-
-
-def discover(run: SourceRun, session: requests.Session) -> list[str]:
+def discover(run: SourceRun, fetcher: Fetcher) -> list[str]:
     max_pages = env_int("WUZZUF_MAX_PAGES", 0) or None
     stop_after = env_int("WUZZUF_STOP_AFTER_KNOWN_PAGES", 9)
     cap = env_int("WUZZUF_MAX_JOBS", 300)
@@ -137,7 +121,7 @@ def discover(run: SourceRun, session: requests.Session) -> list[str]:
 
     while max_pages is None or page < max_pages:
         params = dict(SEARCH_PARAMS, **({"start": page} if page else {}))
-        resp = fetch(session, SEARCH_URL, params)
+        resp = fetcher.get(SEARCH_URL, params)
         if resp is None or resp.status_code != 200:
             log.error("Search page %d failed. Stopping discovery.", page + 1)
             break
@@ -163,13 +147,16 @@ def discover(run: SourceRun, session: requests.Session) -> list[str]:
 
 def run() -> int:
     run_ = SourceRun(SOURCE, log=log)
-    session = make_session({"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"})
+    fetcher = Fetcher(make_session({"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}),
+                      log, timeout=TIMEOUT)
 
-    urls = discover(run_, session)
+    urls = discover(run_, fetcher)
     run_.discovered = len(urls)
     try:
         for i, url in enumerate(urls, 1):
-            resp = fetch(session, url)
+            if run_.should_stop():
+                break
+            resp = fetcher.get(url)
             if resp is None:
                 run_.failure(url, "fetch_failed")
             elif resp.status_code in (404, 410):
@@ -190,6 +177,7 @@ def run() -> int:
                             log.info("[%d/%d] OK %s", i, len(urls), record["title"])
             time.sleep(DETAIL_DELAY)
     finally:
+        fetcher.close()
         code = run_.finish()
     return code
 

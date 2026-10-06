@@ -20,7 +20,10 @@ from __future__ import annotations
 
 import logging
 import os
+import signal
 import sys
+import threading
+import time
 from dataclasses import dataclass, field
 
 import requests
@@ -36,6 +39,7 @@ PARSE_FAILURE = 3    # most detail pages could not be parsed
 
 MIN_ATTEMPTS_FOR_HEALTH = 20
 MAX_BAD_RATIO = 0.5
+BLOCKED_AFTER = 15          # this many failures in a row with no success -> stop early
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -76,12 +80,15 @@ def proxy_settings():
 
 
 def make_session(extra_headers: dict | None = None) -> requests.Session:
+    # Short, bounded retries. Never obey the server's Retry-After header: a
+    # blocking site can send a huge value and freeze the run silently.
     retry = Retry(
-        total=3,
-        backoff_factor=2,
-        status_forcelist=[429, 500, 502, 503, 504],
+        total=2,
+        backoff_factor=1,
+        status_forcelist=[500, 502, 503, 504],
         allowed_methods=["GET"],
-        respect_retry_after_header=True,
+        respect_retry_after_header=False,
+        raise_on_status=False,
     )
     session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=retry))
@@ -120,6 +127,13 @@ class SourceRun:
 
     def __post_init__(self):
         self.log = self.log or get_logger(self.source)
+        self._t0 = time.monotonic()
+        self._fail_streak = 0
+        self.max_minutes = env_int("SCRAPER_MAX_MINUTES", 45)
+        # GitHub sends SIGTERM when a step times out: turn it into a normal
+        # exit so `finally: finish()` still saves what was scraped.
+        if threading.current_thread() is threading.main_thread():
+            signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
         now = storage.utc_now()
         self.started_at = storage.iso(now)
         self.stamp = storage.run_stamp(now)
@@ -140,6 +154,7 @@ class SourceRun:
         record["source_run"] = self.stamp
         self.records.append(record)
         self._pending_urls.add(url)
+        self._fail_streak = 0
         if len(self.records) % self.flush_every == 0:
             self.flush()
         return True
@@ -147,13 +162,31 @@ class SourceRun:
     def gone(self, url: str) -> None:
         """Hard evidence the posting no longer exists (HTTP 404/410)."""
         self._gone_urls.add(url)
+        self.log.info("GONE %s", url)
 
     def soft_gone(self, url: str, reason: str) -> None:
         """Page loaded but no job data: removed posting OR broken parser."""
         self._soft_gone.append({"url": url, "reason": reason})
+        self._fail_streak += 1
+        self.log.warning("EMPTY %s (%s)", url, reason)
 
     def failure(self, url: str, reason: str) -> None:
         self.failed.append({"url": url, "reason": reason, "attempted_at": self.started_at})
+        self._fail_streak += 1
+        self.log.warning("FAIL %s (%s)", url, reason)
+
+    # -- early stop --------------------------------------------------------
+    def should_stop(self) -> bool:
+        """Stop the detail loop when the site is blocking us or time is up.
+        Unfinished URLs are not checkpointed, so the next run picks them up."""
+        if self._fail_streak >= BLOCKED_AFTER:
+            self.log.error("%d failures in a row: the site is probably blocking us. Stopping.", self._fail_streak)
+            return True
+        if self.max_minutes and time.monotonic() - self._t0 > self.max_minutes * 60:
+            self.log.warning("Time budget of %d minutes used. Stopping; the rest is picked up next run.",
+                             self.max_minutes)
+            return True
+        return False
 
     # -- persistence -------------------------------------------------------
     def flush(self) -> None:
@@ -171,6 +204,8 @@ class SourceRun:
 
         if self.listings_seen == 0:
             status, code = "no_listings", NO_LISTINGS
+        elif self._fail_streak >= BLOCKED_AFTER and not self.records:
+            status, code = "blocked", PARSE_FAILURE
         elif attempted >= MIN_ATTEMPTS_FOR_HEALTH and bad / attempted > MAX_BAD_RATIO:
             status, code = "parse_failure", PARSE_FAILURE
 

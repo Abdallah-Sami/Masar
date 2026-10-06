@@ -14,11 +14,11 @@ import sys
 import time
 from urllib.parse import urljoin, urlparse
 
-import requests
 from bs4 import BeautifulSoup
 from dateutil.parser import parse as parse_date
 
 from masar.sources.base import SourceRun, env_int, get_logger, make_session
+from masar.sources.fetcher import Fetcher
 
 SOURCE = "tanqeeb"
 BASE_URL = "https://saudi.tanqeeb.com"
@@ -120,17 +120,16 @@ def parse_job_page(html: str, url: str) -> dict:
     }
 
 
-def discover(run: SourceRun, session: requests.Session) -> list[str]:
+def discover(run: SourceRun, fetcher: Fetcher) -> list[str]:
     max_pages = env_int("TANQEEB_MAX_PAGES", 1000)
     stop_after = env_int("TANQEEB_STOP_AFTER_KNOWN_PAGES", 40)
     new_urls, queued, known_streak = [], set(), 0
 
     for page in range(1, max_pages + 1):
-        try:
-            resp = session.get(build_page_url(page), timeout=TIMEOUT)
-            resp.raise_for_status()
-        except (requests.RequestException, OSError) as e:
-            log.warning("Search page %d failed: %s. Stopping discovery.", page, e)
+        resp = fetcher.get(build_page_url(page))
+        if resp is None or resp.status_code != 200:
+            log.warning("Search page %d failed (%s). Stopping discovery.", page,
+                        resp.status_code if resp else "no response")
             break
 
         links = job_links_from_html(resp.text)
@@ -154,9 +153,9 @@ def discover(run: SourceRun, session: requests.Session) -> list[str]:
 
 def run() -> int:
     run_ = SourceRun(SOURCE, log=log)
-    session = make_session()
+    fetcher = Fetcher(make_session(), log, timeout=TIMEOUT)
 
-    urls = discover(run_, session)
+    urls = discover(run_, fetcher)
     cap = env_int("TANQEEB_MAX_JOBS", 300)
     if cap and len(urls) > cap:
         log.info("Capping to %d of %d new jobs; the rest will be picked up next run.", cap, len(urls))
@@ -165,13 +164,12 @@ def run() -> int:
 
     try:
         for i, url in enumerate(urls, 1):
-            try:
-                resp = session.get(url, timeout=TIMEOUT)
-            except (requests.RequestException, OSError) as e:
-                run_.failure(url, f"request_error: {str(e)[:80]}")
-                continue
-
-            if resp.status_code in (404, 410):
+            if run_.should_stop():
+                break
+            resp = fetcher.get(url)
+            if resp is None:
+                run_.failure(url, "fetch_failed")
+            elif resp.status_code in (404, 410):
                 run_.gone(url)
             elif resp.status_code != 200:
                 run_.failure(url, f"http_{resp.status_code}")
@@ -185,6 +183,7 @@ def run() -> int:
                         log.info("[%d/%d] OK %s", i, len(urls), record["title"])
             time.sleep(DETAIL_DELAY)
     finally:
+        fetcher.close()
         code = run_.finish()
     return code
 

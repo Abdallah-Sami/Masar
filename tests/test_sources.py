@@ -105,3 +105,21 @@ def test_sabbar_extract_details():
     assert details["jobPositionValue"] == "Engineer"
     rec = sabbar.to_record(details, "https://sabbar.com/en/jobs/x", "desc")
     assert rec["title"] == "Engineer" and rec["company"] == "Co" and rec["raw"] == obj
+
+
+def test_blocked_site_stops_early(data_dir):
+    run = SourceRun("wuzzuf")
+    run.listings_seen = 78
+    for i in range(base.BLOCKED_AFTER):
+        assert not run.should_stop()
+        run.failure(f"u{i}", "http_403")
+    assert run.should_stop()
+    assert run.finish() == base.PARSE_FAILURE
+    assert _read(run.checkpoint_file) == []        # nothing checkpointed -> retried next run
+
+
+def test_time_budget(data_dir, monkeypatch):
+    run = SourceRun("tanqeeb")
+    run.max_minutes = 1
+    run._t0 -= 120
+    assert run.should_stop()
