@@ -1,0 +1,130 @@
+# Masar daily run: scrape -> pipeline -> save data -> update website.
+#
+# Free on GitHub Actions (public repo = unlimited minutes; private = 2,000 min/month).
+# Data lives on the `data` branch (created automatically on the first run).
+# The website is built from website/ + the exported jobs and published to `gh-pages`.
+name: Masar daily
+
+on:
+  schedule:
+    - cron: "17 2 * * *"        # 05:17 Riyadh time, every day
+  workflow_dispatch:            # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: masar-daily
+  cancel-in-progress: false
+
+env:
+  MASAR_DATA_DIR: ${{ github.workspace }}/data
+  MASAR_SITE_DIR: ${{ github.workspace }}/site
+  # History for the very first run (the old site's jobs.json).
+  SEED_JOBS_URL: https://raw.githubusercontent.com/Abdallah-Sami/Job_Data_pipeline/gh-pages/jobs.json
+  REPO_URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+  # Optional proxy (add these as repository secrets only if you need one)
+  PROXY_ENABLED: ${{ secrets.PROXY_ENABLED }}
+  PROXY_HOST: ${{ secrets.PROXY_HOST }}
+  PROXY_PORT: ${{ secrets.PROXY_PORT }}
+  PROXY_USER: ${{ secrets.PROXY_USER }}
+  PROXY_PASS: ${{ secrets.PROXY_PASS }}
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Get data branch (first run seeds it from the live website)
+        id: getdata
+        run: |
+          if git ls-remote --exit-code --heads "$REPO_URL" data >/dev/null; then
+            git clone --quiet --depth 1 --branch data "$REPO_URL" data
+          else
+            echo "No data branch yet: starting a new one, seeded with the old website jobs."
+            mkdir -p data/landing/seed
+            curl -fsSL "$SEED_JOBS_URL" -o data/landing/seed/site_jobs.json \
+              || echo "Could not download seed jobs; starting empty."
+          fi
+          rm -rf data/.git
+
+      - name: Scrape Tanqeeb
+        id: tanqeeb
+        continue-on-error: true
+        timeout-minutes: 60
+        run: python -m masar.sources.tanqeeb
+
+      - name: Scrape Wuzzuf
+        id: wuzzuf
+        continue-on-error: true
+        timeout-minutes: 60
+        run: python -m masar.sources.wuzzuf
+
+      - name: Scrape Sabbar
+        id: sabbar
+        continue-on-error: true
+        timeout-minutes: 90
+        run: python -m masar.sources.sabbar
+
+      - name: Pipeline (bronze -> silver -> gold -> checks -> export)
+        id: pipeline
+        run: python -m masar.pipeline.run
+
+      # Always save data, even if the pipeline failed: scraped records and
+      # checkpoints must be stored together or URLs would be skipped forever.
+      - name: Save data branch
+        # Never push if the data branch was not loaded: that would wipe it.
+        if: always() && steps.getdata.outcome == 'success'
+        run: |
+          cd data
+          git init --quiet -b data
+          git config user.name "masar-bot"
+          git config user.email "masar-bot@users.noreply.github.com"
+          git add -A
+          git commit --quiet -m "data $(date -u +%Y-%m-%dT%H:%MZ)"
+          # One commit, force-pushed: the branch always holds just the latest
+          # state, so it does not grow with every run.
+          git push --quiet --force "$REPO_URL" data
+
+      # The website = website/ folder from main + today's jobs.json/stats.json.
+      # Published as a single force-pushed commit on gh-pages (created if missing).
+      - name: Update website (gh-pages)
+        if: steps.pipeline.outcome == 'success'
+        run: |
+          mkdir pages
+          cp -r website/. pages/
+          cp site/jobs.json site/stats.json pages/
+          touch pages/.nojekyll
+          cd pages
+          git init --quiet -b gh-pages
+          git config user.name "masar-bot"
+          git config user.email "masar-bot@users.noreply.github.com"
+          git add -A
+          git commit --quiet -m "site $(date -u +%Y-%m-%d)"
+          git push --quiet --force "$REPO_URL" gh-pages
+
+      # A red run = GitHub emails you. This fails the run if any scraper broke
+      # (blocked, or the site changed its layout), after data was saved.
+      - name: Alert if a scraper is unhealthy
+        if: always()
+        run: |
+          bad=""
+          [ "${{ steps.tanqeeb.outcome }}" != "success" ] && bad="$bad tanqeeb"
+          [ "${{ steps.wuzzuf.outcome }}" != "success" ] && bad="$bad wuzzuf"
+          [ "${{ steps.sabbar.outcome }}" != "success" ] && bad="$bad sabbar"
+          if [ -n "$bad" ]; then
+            echo "::error::Unhealthy scrapers:$bad (see data/runs and data/failed on the data branch)"
+            exit 1
+          fi

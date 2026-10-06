@@ -1,0 +1,63 @@
+[
+ {
+  "id": "w1",
+  "url": "https://wuzzuf.net/jobs/p/abc-python-developer-riyadh",
+  "title": "Python Developer",
+  "job_attributes": {
+   "title": "Python Developer",
+   "description": "Write code",
+   "postedAt": "2026-10-01T10:00:00Z",
+   "salary": {
+    "min": 15000,
+    "max": 20000,
+    "currency": {
+     "code": "SAR"
+    },
+    "period": {
+     "name": "Month"
+    }
+   },
+   "keywords": [
+    {
+     "name": "Python"
+    },
+    {
+     "name": "SQL"
+    },
+    {
+     "name": "Docker"
+    }
+   ],
+   "location": {
+    "city": {
+     "name": "Riyadh"
+    },
+    "country": {
+     "name": "Saudi Arabia"
+    }
+   },
+   "workplaceArrangement": {
+    "displayedName": "Remote"
+   },
+   "workTypes": [
+    {
+     "name": "Full Time"
+    }
+   ],
+   "workExperienceYears": {
+    "min": 3,
+    "max": null
+   },
+   "candidatePreferences": {
+    "educationLevel": {
+     "name": "Bachelor's Degree"
+    }
+   }
+  },
+  "company_attributes": {
+   "name": "Tech Startup"
+  },
+  "collected_at": "2026-10-03T03:00:00Z",
+  "source_run": "x"
+ }
+]

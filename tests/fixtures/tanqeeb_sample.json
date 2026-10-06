@@ -1,0 +1,33 @@
+[
+ {
+  "id": "t1",
+  "title": "Data Analyst",
+  "company": "ACME CO",
+  "url": "https://saudi.tanqeeb.com/jobs/t1.html",
+  "apply_url": null,
+  "location": "Riyadh, Saudi Arabia",
+  "work_mode": "On-site",
+  "job_type": "Full Time",
+  "experience": "2 - 4 Years",
+  "education": "Bachelor",
+  "skills": "SQL; Power BI; Excel",
+  "salary": null,
+  "posted_date": "2026-10-03T00:00:00",
+  "collected_at": "2026-10-03T03:00:00Z"
+ },
+ {
+  "id": "t2",
+  "title": "محاسب",
+  "company": "شركة الأفق",
+  "url": "https://saudi.tanqeeb.com/jobs/t2.html",
+  "location": "الرياض",
+  "work_mode": null,
+  "job_type": "دوام كامل",
+  "experience": "5+ years",
+  "education": "بكالوريوس محاسبة",
+  "skills": "Excel, SAP",
+  "salary": "7,000 - 9,000 SAR per month",
+  "posted_date": "2026-09-20",
+  "collected_at": "2026-10-03T03:00:00Z"
+ }
+]

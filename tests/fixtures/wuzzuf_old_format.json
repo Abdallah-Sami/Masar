@@ -1,0 +1,25 @@
+[
+ {
+  "job_id": "old1",
+  "wuzzuf_job_id": "w1",
+  "job_url": "https://wuzzuf.net/ar/jobs/p/abc-python-developer-riyadh?o=1",
+  "job_attributes": {
+   "title": "Python Developer",
+   "postedAt": "2026-10-01T10:00:00Z",
+   "location": {
+    "city": {
+     "name": "Riyadh"
+    }
+   },
+   "keywords": [
+    {
+     "name": "Python"
+    }
+   ]
+  },
+  "company_attributes": {
+   "name": "Tech Startup"
+  },
+  "collected_at": "2026-10-01T20:00:00Z"
+ }
+]

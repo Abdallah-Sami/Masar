@@ -1,0 +1,57 @@
+[
+ {
+  "id": "a1",
+  "url": "https://sabbar.com/en/jobs/c-riyadh-r-data-analyst/id-a1",
+  "title": "DATA ANALYST",
+  "company": "Acme Co",
+  "industries": "Technology",
+  "salary": 8000,
+  "max_salary": 12000,
+  "currency": "SAR",
+  "salary_frequency": "Monthly",
+  "contract_type": "FULL_TIME",
+  "workplace_type": "HYBRID",
+  "experience_years": "2-4",
+  "city": "Riyadh",
+  "country": "Saudi Arabia",
+  "created_date": "2026-10-01T08:00:00Z",
+  "description": "<p>Build dashboards</p>",
+  "collected_at": "2026-10-02T03:00:00Z",
+  "raw": {
+   "applyUrl": "https://careers.acme.example/jobs/1"
+  }
+ },
+ {
+  "id": "a2",
+  "url": "https://sabbar.com/en/jobs/c-jeddah-r-nurse/id-a2",
+  "title": "Nurse",
+  "company": "Care Hospital",
+  "salary": 0,
+  "currency": "SAR",
+  "contract_type": "CONTRACT",
+  "workplace_type": null,
+  "experience_years": 3,
+  "city": "Jeddah",
+  "country": "Saudi Arabia",
+  "created_date": null,
+  "description": null,
+  "collected_at": "2026-10-02T03:00:00Z"
+ },
+ {
+  "id": "a3",
+  "url": "https://sabbar.com/en/jobs/c-dubai-r-x/id-a3",
+  "title": "Sales Lead",
+  "company": "Gulf LLC",
+  "city": "Dubai",
+  "country": "United Arab Emirates",
+  "collected_at": "2026-10-02T03:00:00Z"
+ },
+ {
+  "id": "a4",
+  "url": "https://sabbar.com/en/jobs/x/id-a4",
+  "title": "  ",
+  "company": "Nobody",
+  "city": "Riyadh",
+  "collected_at": "2026-10-02T03:00:00Z"
+ }
+]
