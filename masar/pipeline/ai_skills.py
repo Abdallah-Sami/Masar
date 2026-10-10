@@ -1,6 +1,11 @@
 """
 AI skill extraction: reads each job description once with an AI model and
-stores the skills it finds. Optional and OFF unless ANTHROPIC_API_KEY is set.
+stores the skills it finds. Optional: OFF unless one of the API keys below is set.
+
+Providers (the first key found is used):
+  GEMINI_API_KEY     Google Gemini, free tier, no card needed (aistudio.google.com)
+  GROQ_API_KEY       Groq, free tier, no card needed (console.groq.com)
+  ANTHROPIC_API_KEY  Claude, paid
 
     python -m masar.pipeline.ai_skills          # processes jobs not done yet
 
@@ -11,8 +16,10 @@ stores the skills it finds. Optional and OFF unless ANTHROPIC_API_KEY is set.
 * Skill names come back in short English form ("Excel", "AutoCAD",
   "Customer Service") and are then merged with the keyword list in silver.
 
-Env: ANTHROPIC_API_KEY (GitHub secret), AI_SKILLS_MODEL (default below),
-     AI_SKILLS_MAX_JOBS, AI_SKILLS_BATCH (jobs per request, default 10).
+Env: one key above (GitHub secret), AI_SKILLS_MODEL (overrides the default model),
+     AI_SKILLS_MAX_JOBS, AI_SKILLS_BATCH (jobs per request, default 10),
+     AI_SKILLS_DELAY (seconds between requests, default 6, keeps free tiers under
+     their per-minute limits).
 """
 from __future__ import annotations
 
@@ -27,8 +34,14 @@ import requests
 from masar import storage
 from masar.pipeline import io, taxonomy
 
-API_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-haiku-4-5"
+# name -> (key env var, endpoint, default model, style)
+PROVIDERS = {
+    "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+               "gemini-2.5-flash-lite", "openai"),
+    "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1/chat/completions",
+             "llama-3.3-70b-versatile", "openai"),
+    "anthropic": ("ANTHROPIC_API_KEY", "https://api.anthropic.com/v1/messages", "claude-haiku-4-5", "anthropic"),
+}
 MAX_DESC_CHARS = 4000
 
 PROMPT = """You read job postings from Saudi Arabia (in English or Arabic) and list the skills each job asks for.
@@ -102,26 +115,49 @@ def parse_answer(text: str) -> list[dict]:
     return json.loads(m.group(0)).get("jobs", [])
 
 
-def call_model(prompt: str, key: str, model: str) -> tuple[str, dict]:
-    for attempt in range(1, 4):
-        r = requests.post(API_URL, timeout=120, headers={
-            "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": model, "max_tokens": 4000, "messages": [{"role": "user", "content": prompt}]})
+def pick_provider() -> tuple[str, str] | None:
+    """(provider name, key) for the first provider whose key is set."""
+    for name, (env, *_rest) in PROVIDERS.items():
+        key = os.environ.get(env, "").strip()
+        if key:
+            return name, key
+    return None
+
+
+def call_model(prompt: str, provider: str, key: str, model: str) -> tuple[str, dict]:
+    _, url, _, style = PROVIDERS[provider]
+    if style == "anthropic":
+        headers = {"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+        body = {"model": model, "max_tokens": 4000, "messages": [{"role": "user", "content": prompt}]}
+    else:  # OpenAI-compatible (Gemini, Groq)
+        headers = {"Authorization": f"Bearer {key}", "content-type": "application/json"}
+        body = {"model": model, "max_tokens": 4000, "temperature": 0,
+                "messages": [{"role": "user", "content": prompt}]}
+    for attempt in range(1, 5):
+        r = requests.post(url, timeout=120, headers=headers, json=body)
         if r.status_code in (429, 500, 502, 503, 529):
-            time.sleep(10 * attempt)
+            time.sleep(20 * attempt)       # free tiers: wait out the per-minute limit
             continue
         r.raise_for_status()
         data = r.json()
-        return "".join(b.get("text", "") for b in data.get("content", [])), data.get("usage", {})
-    raise RuntimeError("model unavailable after retries")
+        if style == "anthropic":
+            u = data.get("usage", {})
+            return "".join(b.get("text", "") for b in data.get("content", [])), u
+        u = data.get("usage", {})
+        return (data["choices"][0]["message"]["content"] or "",
+                {"input_tokens": u.get("prompt_tokens", 0), "output_tokens": u.get("completion_tokens", 0)})
+    raise RuntimeError(f"{provider} unavailable after retries (HTTP {r.status_code})")
 
 
 def run(log=print) -> dict:
-    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not key:
-        log("[ai_skills] ANTHROPIC_API_KEY not set: skipped.")
+    picked = pick_provider()
+    if not picked:
+        log("[ai_skills] no AI key set (GEMINI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY): skipped.")
         return {"skipped": True}
-    model = os.environ.get("AI_SKILLS_MODEL", DEFAULT_MODEL)
+    provider, key = picked
+    model = os.environ.get("AI_SKILLS_MODEL") or PROVIDERS[provider][2]
+    delay = float(os.environ.get("AI_SKILLS_DELAY", "6"))
+    log(f"[ai_skills] using {provider} / {model}")
     cap = int(os.environ.get("AI_SKILLS_MAX_JOBS", "1000"))
     batch = int(os.environ.get("AI_SKILLS_BATCH", "10"))
 
@@ -137,7 +173,9 @@ def run(log=print) -> dict:
         for i in range(0, len(todo), batch):
             chunk = todo[i:i + batch]
             try:
-                text, u = call_model(build_request(chunk), key, model)
+                if i:
+                    time.sleep(delay)
+                text, u = call_model(build_request(chunk), provider, key, model)
                 ids = {j["job_id"] for j in chunk}
                 for rec in parse_answer(text):
                     if rec.get("job_id") in ids:
@@ -149,7 +187,8 @@ def run(log=print) -> dict:
             except Exception as e:      # one bad batch must not stop the rest
                 failed += len(chunk)
                 log(f"[ai_skills] batch failed: {str(e)[:120]}")
-    result = {"processed": done, "failed": failed, "remaining": max(0, len(todo) - done), **usage}
+    result = {"provider": provider, "model": model, "processed": done, "failed": failed,
+              "remaining": max(0, len(todo) - done), **usage}
     log(f"[ai_skills] {result}")
     return result
 

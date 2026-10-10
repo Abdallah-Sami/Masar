@@ -77,12 +77,14 @@ jobs:
         run: python -m masar.sources.sabbar
 
       # Optional: reads job descriptions with AI to find skills. Does nothing
-      # until the ANTHROPIC_API_KEY secret is added. Each job is read once;
+      # until an AI key secret is added (GEMINI_API_KEY is free). Each job is read once;
       # jobs found today are read on the next run.
       - name: AI skills (optional)
         continue-on-error: true
-        timeout-minutes: 30
+        timeout-minutes: 45
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AI_SKILLS_MAX_JOBS: "1000"
         run: python -m masar.pipeline.ai_skills

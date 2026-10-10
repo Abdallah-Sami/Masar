@@ -117,3 +117,29 @@ def test_ai_skills_replace_keyword_skills(data_dir):
     pipeline.main()
     skills = _silver(data_dir)[job["job_url"]]["skills"]
     assert skills == ["Excel", "Financial Analysis", "SOCPA", "Communication", "English"]
+
+
+def test_ai_providers_parse_answers(monkeypatch):
+    from masar.pipeline import ai_skills
+
+    class Resp:
+        status_code = 200
+        def __init__(self, data): self.data = data
+        def raise_for_status(self): pass
+        def json(self): return self.data
+
+    answer = '{"jobs": [{"job_id": "j1", "skills": ["SQL"]}]}'
+    replies = {
+        "gemini": {"choices": [{"message": {"content": answer}}], "usage": {"prompt_tokens": 10, "completion_tokens": 5}},
+        "anthropic": {"content": [{"type": "text", "text": answer}], "usage": {"input_tokens": 10, "output_tokens": 5}},
+    }
+    for provider, data in replies.items():
+        monkeypatch.setattr(ai_skills.requests, "post", lambda *a, **k: Resp(data))
+        text, usage = ai_skills.call_model("x", provider, "key", "model")
+        assert ai_skills.parse_answer(text)[0]["skills"] == ["SQL"]
+        assert usage["input_tokens"] == 10
+
+    for env in ("GEMINI_API_KEY", "GROQ_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(env, raising=False)
+    monkeypatch.setenv("GROQ_API_KEY", "g")
+    assert ai_skills.pick_provider() == ("groq", "g")
