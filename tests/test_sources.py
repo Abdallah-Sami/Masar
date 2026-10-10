@@ -123,3 +123,13 @@ def test_time_budget(data_dir, monkeypatch):
     run.max_minutes = 1
     run._t0 -= 120
     assert run.should_stop()
+
+
+def test_wuzzuf_reads_jobs_from_search_page():
+    html = _wuzzuf_page("right-slug")
+    urls = ["https://wuzzuf.net/saudi/jobs/p/right-slug", "https://wuzzuf.net/saudi/jobs/p/missing"]
+    got = wuzzuf.records_from_listing(html, urls)
+    assert list(got) == [urls[0]]
+    assert got[urls[0]]["job_attributes"]["title"] == "Right Job"
+    assert got[urls[0]]["company_attributes"]["name"] == "Co"
+    assert wuzzuf.records_from_listing("<html>no store</html>", urls) == {}

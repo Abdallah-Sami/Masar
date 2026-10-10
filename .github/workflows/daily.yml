@@ -23,9 +23,10 @@ env:
   # History for the very first run (the old site's jobs.json).
   SEED_JOBS_URL: https://raw.githubusercontent.com/Abdallah-Sami/Job_Data_pipeline/gh-pages/jobs.json
   SCRAPER_MAX_MINUTES: "40"   # each scraper stops itself before its step timeout
+  SABBAR_MAX_JOBS: "4000"     # ~900 jobs per 7 min; the time budget stops it safely
   REPO_URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
-  # Optional proxy (add these as repository secrets only if you need one)
-  PROXY_ENABLED: ${{ secrets.PROXY_ENABLED }}
+  # Optional proxy (repository secrets). Only the Tanqeeb step turns it on,
+  # so Sabbar keeps its direct connection and the proxy's traffic stays low.
   PROXY_HOST: ${{ secrets.PROXY_HOST }}
   PROXY_PORT: ${{ secrets.PROXY_PORT }}
   PROXY_USER: ${{ secrets.PROXY_USER }}
@@ -65,19 +66,26 @@ jobs:
         id: tanqeeb
         continue-on-error: true
         timeout-minutes: 60
+        env:
+          PROXY_ENABLED: ${{ secrets.PROXY_ENABLED }}
         run: python -m masar.sources.tanqeeb
-
-      - name: Scrape Wuzzuf
-        id: wuzzuf
-        continue-on-error: true
-        timeout-minutes: 60
-        run: python -m masar.sources.wuzzuf
 
       - name: Scrape Sabbar
         id: sabbar
         continue-on-error: true
         timeout-minutes: 90
         run: python -m masar.sources.sabbar
+
+      # Optional: reads job descriptions with AI to find skills. Does nothing
+      # until the ANTHROPIC_API_KEY secret is added. Each job is read once;
+      # jobs found today are read on the next run.
+      - name: AI skills (optional)
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_SKILLS_MAX_JOBS: "1000"
+        run: python -m masar.pipeline.ai_skills
 
       - name: Pipeline (bronze -> silver -> gold -> checks -> export)
         id: pipeline
@@ -99,14 +107,14 @@ jobs:
           # state, so it does not grow with every run.
           git push --quiet --force "$REPO_URL" data
 
-      # The website = website/ folder from main + today's jobs.json/stats.json.
+      # The website = website/ folder from main + today's jobs.json, stats.json and fields.json.
       # Published as a single force-pushed commit on gh-pages (created if missing).
       - name: Update website (gh-pages)
         if: steps.pipeline.outcome == 'success'
         run: |
           mkdir pages
           cp -r website/. pages/
-          cp site/jobs.json site/stats.json pages/
+          cp site/*.json pages/
           touch pages/.nojekyll
           cd pages
           git init --quiet -b gh-pages
@@ -123,7 +131,6 @@ jobs:
         run: |
           bad=""
           [ "${{ steps.tanqeeb.outcome }}" != "success" ] && bad="$bad tanqeeb"
-          [ "${{ steps.wuzzuf.outcome }}" != "success" ] && bad="$bad wuzzuf"
           [ "${{ steps.sabbar.outcome }}" != "success" ] && bad="$bad sabbar"
           if [ -n "$bad" ]; then
             echo "::error::Unhealthy scrapers:$bad (see data/runs and data/failed on the data branch)"

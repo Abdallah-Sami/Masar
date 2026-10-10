@@ -86,25 +86,11 @@ def extract_store_state(html: str) -> dict:
         return json.loads(_balanced_json(raw))
 
 
-def parse_job_page(html: str, url: str) -> dict | None:
-    """Pure function: HTML -> raw record, or None if this URL's job isn't in the page."""
-    store = extract_store_state(html)
-    slug_m = SLUG_RE.search(url)
-    slug = slug_m.group(1) if slug_m else None
-    jobs = store.get("entities", {}).get("job", {}).get("collection", {}) or {}
-
-    job_id, entity = next(
-        ((jid, ent) for jid, ent in jobs.items() if slug and (ent.get("attributes") or {}).get("slug") == slug),
-        (None, None),
-    )
-    if entity is None:
-        return None
-
+def _record(store: dict, job_id, entity: dict, url: str) -> dict:
     company = None
     ref = (entity.get("relationships") or {}).get("company", {}).get("data") or {}
     if ref.get("id"):
         company = store.get("entities", {}).get("company", {}).get("collection", {}).get(ref["id"])
-
     return {
         "id": str(job_id),
         "url": url,
@@ -113,7 +99,40 @@ def parse_job_page(html: str, url: str) -> dict | None:
     }
 
 
-def discover(run: SourceRun, fetcher: Fetcher) -> list[str]:
+def _jobs(store: dict) -> dict:
+    return store.get("entities", {}).get("job", {}).get("collection", {}) or {}
+
+
+def parse_job_page(html: str, url: str) -> dict | None:
+    """Pure function: HTML -> raw record, or None if this URL's job isn't in the page."""
+    store = extract_store_state(html)
+    slug_m = SLUG_RE.search(url)
+    slug = slug_m.group(1) if slug_m else None
+    for job_id, entity in _jobs(store).items():
+        if slug and (entity.get("attributes") or {}).get("slug") == slug:
+            return _record(store, job_id, entity, url)
+    return None
+
+
+def records_from_listing(html: str, urls: list[str]) -> dict[str, dict]:
+    """Search pages embed the same job data as detail pages for every result.
+    Reading it here means we often don't need the detail page at all (Wuzzuf
+    blocks detail pages from cloud servers but not the search pages)."""
+    try:
+        store = extract_store_state(html)
+    except (ValueError, json.JSONDecodeError):
+        return {}
+    by_slug = {(e.get("attributes") or {}).get("slug"): (jid, e) for jid, e in _jobs(store).items()}
+    out = {}
+    for url in urls:
+        m = SLUG_RE.search(url)
+        hit = by_slug.get(m.group(1)) if m else None
+        if hit and (hit[1].get("attributes") or {}).get("title"):
+            out[url] = _record(store, hit[0], hit[1], url)
+    return out
+
+
+def discover(run: SourceRun, fetcher: Fetcher, prefetched: dict | None = None) -> list[str]:
     max_pages = env_int("WUZZUF_MAX_PAGES", 0) or None
     stop_after = env_int("WUZZUF_STOP_AFTER_KNOWN_PAGES", 9)
     cap = env_int("WUZZUF_MAX_JOBS", 300)
@@ -133,6 +152,8 @@ def discover(run: SourceRun, fetcher: Fetcher) -> list[str]:
             break
 
         fresh = [u for u in links if u not in seen and u not in run.known_urls]
+        if prefetched is not None:
+            prefetched.update(records_from_listing(resp.text, fresh))
         seen.update(links)
         new_urls.extend(fresh)
         log.info("Page %d: %d links, %d new (total new %d)", page + 1, len(links), len(fresh), len(new_urls))
@@ -150,10 +171,19 @@ def run() -> int:
     fetcher = Fetcher(make_session({"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}),
                       log, timeout=TIMEOUT)
 
-    urls = discover(run_, fetcher)
+    prefetched: dict[str, dict] = {}
+    urls = discover(run_, fetcher, prefetched)
     run_.discovered = len(urls)
+    log.info("Search pages already carried full data for %d of %d new jobs.",
+             sum(u in prefetched for u in urls), len(urls))
     try:
         for i, url in enumerate(urls, 1):
+            if url in prefetched:
+                record = prefetched[url]
+                record["title"] = record["job_attributes"].get("title")
+                if run_.success(url, record, required=("title",)):
+                    log.info("[%d/%d] OK (from search page) %s", i, len(urls), record["title"])
+                continue
             if run_.should_stop():
                 break
             resp = fetcher.get(url)

@@ -5,14 +5,14 @@ Surrogate keys are a hash of the natural key, so the same company / city /
 skill keeps the same key across runs (no IDENTITY drift, no full wipe needed).
 
 Tables (data/lake/gold/<name>.parquet):
-  dim_source, dim_company, dim_location, dim_job, dim_skill, dim_date,
+  dim_source, dim_company, dim_location, dim_job, dim_skill, dim_date, dim_field,
   fact_job_posting (one row per posting; is_primary marks cross-source dups),
   bridge_job_posting_skill
 """
 from __future__ import annotations
 
 from masar import storage
-from masar.pipeline import io
+from masar.pipeline import io, taxonomy
 
 
 def key(expr: str, case_sensitive: bool = False) -> str:
@@ -37,8 +37,10 @@ TABLES = {
     "dim_job": f"""
         SELECT DISTINCT {key("concat_ws('|', job_title, employment_type, work_mode, qualification, experience_needed)", True)} AS job_key,
                job_title, employment_type, work_mode, qualification AS qualification_required,
-               experience_needed, experience_band
+               experience_needed, experience_band, job_field
         FROM silver""",
+
+    "dim_field": "SELECT * FROM fields",
 
     "dim_skill": f"""
         SELECT {key('lower(s)')} AS skill_key, mode(s) AS skill_name, count(*) AS postings
@@ -64,7 +66,7 @@ TABLES = {
                CAST(strftime(last_seen_at, '%Y%m%d') AS BIGINT) AS last_seen_date_key,
                job_url, apply_url, salary_min, salary_max, salary_currency, salary_period, salary_text,
                experience_min, experience_max, len(skills) AS skill_count,
-               posted_date_estimated, is_primary, dup_key, times_seen
+               posted_date_estimated, is_primary, dup_key, times_seen, job_field, skills_known
         FROM silver""",
 
     "bridge_job_posting_skill": f"""
@@ -77,6 +79,9 @@ def run(log=print) -> dict:
     silver = storage.data_dir() / "lake" / "silver"
     con = io.connect()
     con.execute(f"CREATE VIEW silver AS SELECT * FROM {io.parquet(silver)}")
+    rows = ", ".join("(" + ", ".join("'" + v.replace("'", "''") + "'" for v in (fid, en, ar)) + ")"
+                     for fid, (en, ar) in taxonomy.FIELD_NAMES.items())
+    con.execute(f"CREATE VIEW fields AS SELECT * FROM (VALUES {rows}) t(job_field, field_name_en, field_name_ar)")
     out_dir = storage.data_dir() / "lake" / "gold"
     out_dir.mkdir(parents=True, exist_ok=True)
     counts = {}

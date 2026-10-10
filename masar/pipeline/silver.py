@@ -22,6 +22,7 @@ from urllib.parse import urlsplit, urlunsplit
 from masar import storage
 from masar.pipeline import io
 from masar.pipeline import cleaning as c
+from masar.pipeline import ai_skills, taxonomy
 
 SILVER_COLUMNS = {
     "job_id": "VARCHAR", "source": "VARCHAR", "native_id": "VARCHAR",
@@ -34,7 +35,7 @@ SILVER_COLUMNS = {
     "experience_needed": "VARCHAR", "experience_band": "VARCHAR",
     "salary_min": "DOUBLE", "salary_max": "DOUBLE", "salary_currency": "VARCHAR",
     "salary_period": "VARCHAR", "salary_text": "VARCHAR",
-    "skills": "VARCHAR[]", "description": "VARCHAR",
+    "skills": "VARCHAR[]", "skills_known": "BOOLEAN", "job_field": "VARCHAR", "description": "VARCHAR",
     "posted_at": "TIMESTAMP", "posted_date_estimated": "BOOLEAN",
     "first_seen_at": "TIMESTAMP", "last_seen_at": "TIMESTAMP", "times_seen": "INTEGER",
     "dup_key": "VARCHAR", "is_primary": "BOOLEAN", "posted_month": "VARCHAR",
@@ -76,6 +77,21 @@ def experience_text(lo, hi) -> str:
     return _fmt_years(lo) if lo == hi else f"{_fmt_years(lo)}-{_fmt_years(hi)}"
 
 
+# Placeholders some sites use instead of the employer's name.
+HIDDEN_COMPANY = ("confidential", "سري", "محجوب", "company name hidden", "undisclosed")
+
+
+def merge_skills(*lists: list[str]) -> list[str]:
+    """Union of skill lists, case-insensitive, first spelling wins."""
+    out, seen = [], set()
+    for lst in lists:
+        for s in lst:
+            if s.lower() not in seen:
+                seen.add(s.lower())
+                out.append(s)
+    return out
+
+
 def clean_row(b: dict) -> tuple[dict | None, str | None]:
     """bronze row -> (silver row, None) or (None, reject reason)."""
     url = canonical_url(b.get("raw_job_url"))
@@ -88,7 +104,8 @@ def clean_row(b: dict) -> tuple[dict | None, str | None]:
         return None, "not_saudi"
 
     company = c.clean_text(b.get("raw_company_name"))
-    company = None if c.is_empty(company) or (company or "").lower() in {"confidential", "سري"} else company
+    if c.is_empty(company) or any(w in (company or "").lower() for w in HIDDEN_COMPANY):
+        company = None
     exp_lo, exp_hi = c.parse_experience(b.get("raw_experience"))
     salary = c.parse_salary(b.get("raw_salary"), b.get("raw_salary_min"), b.get("raw_salary_max"),
                             b.get("raw_salary_currency"), b.get("raw_salary_period"))
@@ -114,7 +131,10 @@ def clean_row(b: dict) -> tuple[dict | None, str | None]:
         "industry": c.clean_text(b.get("raw_industry")),
         "experience_min": exp_lo, "experience_max": exp_hi,
         **salary,
-        "skills": c.split_skills(b.get("raw_skills")),
+        "skills": merge_skills(c.split_skills(b.get("raw_skills")),
+                               taxonomy.extract_skills(title, c.clean_text(b.get("raw_job_description")))),
+        "skills_known": bool(b.get("raw_skills") or b.get("raw_job_description")),
+        "job_field": taxonomy.job_field(title),
         "description": c.clean_text(b.get("raw_job_description")),
         "_posted": posted,
         "_collected": collected,
@@ -138,6 +158,7 @@ def merge_sightings(rows: list[dict]) -> dict:
     out["posted_date_estimated"] = not posted
     out["experience_needed"] = experience_text(out["experience_min"], out["experience_max"])
     out["experience_band"] = c.experience_band(out["experience_min"])
+    out["skills_known"] = any(r["skills_known"] for r in rows)
     out["posted_month"] = out["posted_at"].strftime("%Y-%m") if out["posted_at"] else "unknown"
     out.pop("_posted"), out.pop("_collected")
     return out
@@ -170,6 +191,9 @@ def flag_duplicates(jobs: list[dict]) -> None:
                           and abs((j["posted_at"] - p["posted_at"]).days) <= DUP_WINDOW_DAYS), None)
             if match:
                 j["is_primary"] = False
+                # The kept posting inherits what the duplicate knows (e.g. skills listed on one site only).
+                match["skills"] = merge_skills(match["skills"], j["skills"])
+                match["skills_known"] = match["skills_known"] or j["skills_known"]
             else:
                 primaries.append(j)
 
@@ -189,10 +213,27 @@ def build(bronze_rows: list[dict]) -> tuple[list[dict], list[dict]]:
     return jobs, rejected
 
 
+def apply_ai_skills(jobs: list[dict]) -> int:
+    """Where the AI step has read a job, use its skills (better than keyword
+    matching, especially for Arabic). Other jobs keep the keyword skills."""
+    cache = ai_skills.load_cache()
+    if not cache:
+        return 0
+    n = 0
+    for j in jobs:
+        rec = cache.get(j["job_id"])
+        if rec:
+            j["skills"] = ai_skills.skills_from(rec)
+            j["skills_known"] = True
+            n += 1
+    return n
+
+
 def run(log=print) -> dict:
     lake = storage.data_dir() / "lake"
     con = io.connect()
     jobs, rejected = build(io.read_rows(lake / "bronze", con=con))
+    ai = apply_ai_skills(jobs)
     # One folder per posted month keeps each file far below GitHub's 100 MB limit.
     io.write_rows(jobs, SILVER_COLUMNS, lake / "silver", con, partition_by="posted_month")
     io.write_rows(rejected, REJECTED_COLUMNS, storage.path("lake", "rejected.parquet"), con)
@@ -200,6 +241,6 @@ def run(log=print) -> dict:
     for r in rejected:
         reasons[r["reason"]] = reasons.get(r["reason"], 0) + 1
     result = {"silver_rows": len(jobs), "primary_rows": sum(j["is_primary"] for j in jobs),
-              "rejected_rows": len(rejected), "rejected_by_reason": reasons}
+              "rejected_rows": len(rejected), "rejected_by_reason": reasons, "ai_skills_jobs": ai}
     log(f"[silver] {result}")
     return result

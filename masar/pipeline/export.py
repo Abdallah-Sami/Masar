@@ -3,6 +3,8 @@ Export the website files from gold:
 
   <site>/jobs.json   same fields the current website reads (plus skills/salary)
   <site>/stats.json  market numbers for a future stats section on the site
+  <site>/fields.json per field and per popular title: titles, skills, companies,
+                     cities, work mode, experience, salary, monthly trend
 
 <site> = MASAR_SITE_DIR (default ./site). Only primary postings are exported,
 so a job listed on two sources shows once.
@@ -15,7 +17,7 @@ import os
 from pathlib import Path
 
 from masar import storage
-from masar.pipeline import io
+from masar.pipeline import io, taxonomy
 
 
 def site_dir() -> Path:
@@ -27,12 +29,12 @@ def site_dir() -> Path:
 def _views(con) -> None:
     gold = storage.data_dir() / "lake" / "gold"
     for t in ("fact_job_posting", "dim_job", "dim_company", "dim_location", "dim_source",
-              "dim_skill", "bridge_job_posting_skill"):
+              "dim_skill", "bridge_job_posting_skill", "dim_field"):
         con.execute(f"CREATE VIEW {t} AS SELECT * FROM {io.parquet(gold / (t + '.parquet'))}")
     con.execute("""
         CREATE VIEW jobs AS
         SELECT f.*, j.job_title, j.work_mode, j.employment_type, j.qualification_required,
-               j.experience_needed, c.company_name, l.city, s.source_name
+               j.experience_needed, j.experience_band, c.company_name, l.city, s.source_name
         FROM fact_job_posting f
         JOIN dim_job j USING (job_key) JOIN dim_company c USING (company_key)
         JOIN dim_location l USING (location_key) JOIN dim_source s USING (source_key)
@@ -89,6 +91,69 @@ def write_compact(target: Path, obj) -> None:
     tmp.replace(target)
 
 
+# ---------------------------------------------------------------------------
+# fields.json: market analysis per field (job family) and per popular title
+# ---------------------------------------------------------------------------
+MIN_TITLE_JOBS = 15
+
+
+def _group_profile(con, where: str, params: list, top: int = 12) -> dict:
+    """Titles, skills, companies, cities, salary... for one slice of jobs."""
+    def q(sql, n=top):
+        cur = con.execute(sql + f" LIMIT {n}", params)
+        names = [d[0] for d in cur.description]
+        return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    base = f"FROM jobs WHERE {where}"
+    total, known = con.execute(f"SELECT count(*), count(*) FILTER (WHERE skills_known) {base}", params).fetchone()
+    salary = con.execute(f"""SELECT count(*), round(median(salary_min)), round(quantile_cont(salary_min, 0.25)),
+                                    round(quantile_cont(salary_min, 0.75))
+                             {base} AND salary_min IS NOT NULL AND salary_currency = 'SAR'
+                               AND coalesce(salary_period, 'month') ILIKE 'month%'""", params).fetchone()
+    prof = {
+        "jobs": total,
+        "skills_basis": known,   # postings whose description/skills we could read
+        "top_titles": q(f"SELECT job_title AS name, count(*) AS jobs {base} GROUP BY 1 ORDER BY 2 DESC, 1"),
+        "top_skills": q(f"""SELECT k.skill_name AS name, count(*) AS jobs,
+                                   round(100.0 * count(*) / greatest({known}, 1), 1) AS pct
+                            FROM jobs j JOIN bridge_job_posting_skill b USING (job_posting_key)
+                            JOIN dim_skill k USING (skill_key)
+                            WHERE {where} AND j.skills_known
+                            GROUP BY 1 ORDER BY 2 DESC, 1""", 25),
+        "top_companies": q(f"SELECT company_name AS name, count(*) AS jobs {base} AND company_name <> 'Unknown' "
+                           "GROUP BY 1 ORDER BY 2 DESC, 1"),
+        "top_cities": q(f"SELECT city AS name, count(*) AS jobs {base} AND city <> 'Unknown' GROUP BY 1 ORDER BY 2 DESC, 1", 8),
+        "work_mode": q(f"SELECT work_mode AS name, count(*) AS jobs {base} AND work_mode <> 'Unknown' GROUP BY 1 ORDER BY 2 DESC", 5),
+        "experience": q(f"SELECT experience_band AS name, count(*) AS jobs {base} AND experience_band <> 'Unknown' "
+                        "GROUP BY 1 ORDER BY 1", 5),
+        "salary": {"sample": salary[0], "median": salary[1], "p25": salary[2], "p75": salary[3]} if salary[0] >= 5 else None,
+        "monthly": q(f"""SELECT substr(CAST(posted_date_key AS VARCHAR), 1, 6) AS month, count(*) AS jobs
+                         {base} GROUP BY 1 ORDER BY 1 DESC""", 12)[::-1],
+    }
+    for sk in prof["top_skills"]:
+        sk["soft"] = sk["name"] in taxonomy.SOFT_SKILLS
+    return prof
+
+
+def build_fields(con) -> dict:
+    total = con.execute("SELECT count(*) FROM jobs").fetchone()[0]
+    fields = []
+    for fid, en, ar in con.execute("SELECT job_field, field_name_en, field_name_ar FROM dim_field").fetchall():
+        prof = _group_profile(con, "job_field = ?", [fid])
+        if prof["jobs"]:
+            fields.append({"id": fid, "name_en": en, "name_ar": ar,
+                           "share": round(100.0 * prof["jobs"] / max(total, 1), 1), **prof})
+    fields.sort(key=lambda f: (f["id"] == "other", -f["jobs"]))
+
+    titles = []
+    for title, fid, n in con.execute(f"""SELECT job_title, mode(job_field), count(*) FROM jobs GROUP BY 1
+                                        HAVING count(*) >= {MIN_TITLE_JOBS} ORDER BY 3 DESC""").fetchall():
+        prof = _group_profile(con, "job_title = ?", [title], top=8)
+        prof.pop("top_titles")
+        titles.append({"title": title, "field": fid, **prof})
+    return {"updated_at": storage.iso(), "total_jobs": total, "fields": fields, "titles": titles}
+
+
 def run(log=print) -> dict:
     con = io.connect()
     _views(con)
@@ -103,6 +168,9 @@ def run(log=print) -> dict:
     write_compact(out / "jobs.json", jobs)
     exported = len(jobs)
     write_compact(out / "stats.json", build_stats(con))
-    result = {"exported_jobs": exported, "site_dir": str(out)}
+    fields = build_fields(con)
+    write_compact(out / "fields.json", fields)
+    result = {"exported_jobs": exported, "fields": len(fields["fields"]), "title_profiles": len(fields["titles"]),
+              "site_dir": str(out)}
     log(f"[export] {result}")
     return result

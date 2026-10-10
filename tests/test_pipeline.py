@@ -41,7 +41,8 @@ def test_end_to_end(data_dir, tmp_path):
 
     analyst_tanqeeb = silver["https://saudi.tanqeeb.com/jobs/t1.html"]
     assert analyst_tanqeeb["is_primary"] is False                       # same job, other source
-    assert analyst_tanqeeb["skills"] == ["SQL", "Power BI", "Excel"]
+    assert analyst_tanqeeb["skills"][:3] == ["SQL", "Power BI", "Excel"]
+    assert analyst_sabbar["job_field"] == "data_ai"
 
     nurse = silver["https://sabbar.com/en/jobs/c-jeddah-r-nurse/id-a2"]
     assert nurse["work_mode"] == "Unknown" and nurse["salary_min"] is None
@@ -57,6 +58,11 @@ def test_end_to_end(data_dir, tmp_path):
     first = jobs[0]
     for field in ("job_url", "job_id", "job_title", "company_name", "city", "source_name", "posted_date_key"):
         assert field in first
+    fields = json.loads((tmp_path / "site" / "fields.json").read_text(encoding="utf-8"))
+    data_field = next(f for f in fields["fields"] if f["id"] == "data_ai")
+    assert data_field["jobs"] == 1                                       # one primary "Data Analyst"
+    assert {"SQL", "Power BI"} <= {s["name"] for s in data_field["top_skills"]}
+    assert py["job_field"] == "software_it" and "Python" in py["skills"]
     stats = json.loads((tmp_path / "site" / "stats.json").read_text(encoding="utf-8"))
     assert stats["total_jobs"] == len(jobs)
 
@@ -96,3 +102,18 @@ def test_old_archives_are_pruned(data_dir, monkeypatch):
     monkeypatch.setenv("ARCHIVE_KEEP_DAYS", "60")
     assert bronze.prune_archive() == 1
     assert sorted(p.name for p in arch.iterdir()) == ["legacy_name.json.gz", "sabbar_29990101T000000Z.json.gz"]
+
+
+def test_ai_skills_replace_keyword_skills(data_dir):
+    from masar.pipeline import ai_skills
+    copy_fixture(data_dir, "tanqeeb", "tanqeeb_sample.json")
+    pipeline.main()
+    job = next(iter(_silver(data_dir).values()))
+    cache = data_dir / "ai" / "skills.jsonl"
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps({"job_id": job["job_id"], "skills": ["MS Excel", "Financial Modeling"],
+                                 "soft_skills": ["Communication Skills"], "certifications": ["SOCPA"],
+                                 "languages": ["English"]}) + "\n", encoding="utf-8")
+    pipeline.main()
+    skills = _silver(data_dir)[job["job_url"]]["skills"]
+    assert skills == ["Excel", "Financial Analysis", "SOCPA", "Communication", "English"]
