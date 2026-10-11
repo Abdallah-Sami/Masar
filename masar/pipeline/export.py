@@ -21,7 +21,7 @@ import shutil
 from pathlib import Path
 
 from masar import storage
-from masar.pipeline import io, taxonomy
+from masar.pipeline import io, social, taxonomy
 
 
 def site_dir() -> Path:
@@ -211,6 +211,7 @@ def run(log=print) -> dict:
     write_compact(out / "stats.json", build_stats(con))
     fields = build_fields(con)
     write_compact(out / "fields.json", fields)
+    write_compact(out / "social.json", social.build(jobs, fields))
     result = {"exported_jobs": exported, "detail_files": detail_files, "closed_hidden": con.execute(
                   "SELECT count(*) FROM jobs WHERE NOT is_active").fetchone()[0], "fields": len(fields["fields"]), "title_profiles": len(fields["titles"]),
               "site_dir": str(out)}

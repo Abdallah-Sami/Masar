@@ -228,3 +228,36 @@ def test_ai_picks_first_available_model(monkeypatch):
     monkeypatch.setattr(ai_skills, "call_model", fake)
     assert ai_skills.pick_model("gemini", "k", None, log=lambda *a: None) == "gemini-3.1-flash-lite"
     assert tried[:2] == ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+
+
+def test_social_posts_fit_and_skip_links(monkeypatch):
+    from masar.pipeline import social
+    monkeypatch.delenv("X_POST_LINKS", raising=False)
+    jobs = [{"job_id": f"{i:016x}", "job_title": "Accountant", "company_name": f"Co{i % 4}", "city": "Riyadh",
+             "work_mode": "On-site", "posted_date_key": 20261010, "job_field": "finance",
+             "experience_band": "0-1 years (entry)"} for i in range(30)]
+    fields = {"fields": [{"id": "finance", "name_ar": "المالية", "name_en": "Finance", "jobs": 30,
+                          "salary": {"median": 5000, "p25": 4000, "p75": 6000, "sample": 12}}],
+              "market": {"skills_basis": 30, "top_skills": [{"name": n, "pct": 10, "soft": False} for n in "ABCD"]}}
+    out = social.build(jobs, fields)
+    assert {p["id"] for p in out["posts"]} == {"pulse", "skills", "companies", "entry", "salary"}
+    assert out["today"] in {p["id"] for p in out["posts"]}
+    for p in out["posts"]:
+        assert len(p["text"]) <= 280 and "http" not in p["text"]
+
+
+def test_post_x_once_per_day(tmp_path, monkeypatch):
+    import json
+    from masar.pipeline import post_x
+    monkeypatch.setenv("MASAR_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("MASAR_SITE_DIR", str(tmp_path / "site"))
+    (tmp_path / "site").mkdir()
+    (tmp_path / "site" / "social.json").write_text(json.dumps({"today": "a", "posts": [{"id": "a", "text": "hi"}]}))
+    for k in post_x.KEYS:
+        monkeypatch.setenv(k, "x")
+    sent = []
+    monkeypatch.setattr(post_x, "send", lambda text, image=None, log=None: sent.append(text) or "123")
+    monkeypatch.setattr(post_x, "make_image", lambda post, log=None: None)
+    post_x.run(log=lambda *a: None)
+    post_x.run(log=lambda *a: None)
+    assert sent == ["hi"]

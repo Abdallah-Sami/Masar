@@ -107,6 +107,17 @@ jobs:
         id: pipeline
         run: python -m masar.pipeline.run
 
+      # Daily post on the Masar X account (skipped until the X_* secrets are added).
+      - name: Post to X
+        if: steps.pipeline.outcome == 'success'
+        continue-on-error: true
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+        run: python -m masar.pipeline.post_x
+
       # Always save data, even if the pipeline failed: scraped records and
       # checkpoints must be stored together or URLs would be skipped forever.
       - name: Save data branch
