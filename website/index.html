@@ -164,17 +164,6 @@
   }
   .apply-btn:hover { background: var(--accent-bg); }
 
-  .dashboard-section { border-top: 1px solid var(--border); padding: 40px 20px; }
-  .dashboard-inner { max-width: 1200px; margin: 0 auto; }
-  .dashboard-inner h2 { font-size: 20px; margin-bottom: 16px; }
-  .dashboard-frame {
-    position: relative; width: 100%; padding-top: 56.25%; /* 16:9 */
-    border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--card);
-  }
-  .dashboard-frame iframe {
-    position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
-  }
-
 
   /* ---------- Team ---------- */
   .team-section { border-top: 1px solid var(--border); padding: 40px 24px 48px; }
@@ -253,8 +242,8 @@
     </a>
     <nav class="nav" id="nav">
       <a href="#jobs" data-i18n="nav_jobs">الوظائف</a>
+      <a href="./dashboard.html" data-i18n="nav_dash">لوحة السوق</a>
       <a href="./insights.html" data-i18n="nav_insights">تحليل التخصصات</a>
-      <a href="#dashboard" id="dashboardLink" hidden data-i18n="nav_dash">لوحة الإحصائيات</a>
       <a href="#team" data-i18n="nav_team">الفريق</a>
     </nav>
     <button type="button" class="lang-btn" id="langBtn" lang="en">EN</button>
@@ -318,15 +307,6 @@
   <div class="more-wrap" id="moreWrap" hidden><button class="more-btn" id="moreBtn" type="button">عرض المزيد</button></div>
 </main>
 
-<section id="dashboard" class="dashboard-section" hidden>
-  <div class="dashboard-inner">
-    <h2 data-i18n="dash_title">لوحة الإحصائيات</h2>
-    <div class="dashboard-frame">
-      <iframe id="dashboardFrame" title="لوحة إحصائيات مسار" loading="lazy" allowfullscreen></iframe>
-    </div>
-  </div>
-</section>
-
 <section id="team" class="team-section">
   <div class="team-inner">
     <h2 data-i18n="team_title">فريق العمل</h2>
@@ -368,11 +348,8 @@
 </footer>
 
 <script>
-// Power BI "Publish to web" link — shows the dashboard link in the header and embeds it below the jobs list.
-const DASHBOARD_URL = "https://app.powerbi.com/view?r=eyJrIjoiZjJhZjY2MzItZWNlZS00ZjU1LWFjNWMtMzVlYTM2MDljZWIyIiwidCI6IjQ4Y2Q1NzUxLTU0MjQtNDk1NS05YWZjLTYzNmMzM2FmYjI2OSJ9";
-
 const PAGE_SIZE = 60;
-const NUM = "en-US";                      // Latin digits everywhere (matches the dashboard)
+const NUM = "en-US";                      // Latin digits everywhere
 const EMPTY = new Set(["", "unknown", "not specified", "n/a", "na", "none", "null", "nan", "-"]);
 
 const SOURCE_COLORS = { "Sabbar": "#d9733f", "Wuzzuf": "#6b6fd6", "Tanqeeb": "#12a086" };
@@ -404,7 +381,7 @@ const $ = id => document.getElementById(id);
 const I18N = {
   ar: {
     page_title: "مسار — دليلك للوظائف في السعودية",
-    nav_jobs: "الوظائف", nav_dash: "لوحة الإحصائيات", nav_team: "الفريق", nav_insights: "تحليل التخصصات",
+    nav_jobs: "الوظائف", nav_dash: "لوحة السوق", nav_team: "الفريق", nav_insights: "تحليل التخصصات",
     hero_title: "أحدث الوظائف في السعودية، في مكان واحد",
     hero_sub: "تجميع يومي تلقائي من عدة مصادر لأحدث فرص العمل المتاحة",
     stat_jobs: "وظيفة متاحة", stat_companies: "شركة", stat_cities: "مدينة", stat_sources: "مصدر",
@@ -418,7 +395,6 @@ const I18N = {
     no_title: "بدون عنوان", no_company: "شركة غير محددة", no_city: "غير محدد", exp: "خبرة:", view_job: "عرض الوظيفة",
     today: "اليوم", yesterday: "أمس", two_days: "منذ يومين",
     days_few: n => `منذ ${n} أيام`, days_many: n => `منذ ${n} يومًا`,
-    dash_title: "لوحة الإحصائيات", dash_frame: "لوحة إحصائيات مسار",
     team_title: "فريق العمل", team_sub: "الفريق الذي بنى مسار. تواصل معنا واطّلع على سيرنا الذاتية.", cv: "السيرة الذاتية",
     footer1: "مسار — مشروع تخرج في هندسة البيانات · الأكاديمية السعودية الرقمية × WeCloudData",
     footer2: "البيانات تُجمع من مصادر عامة وتُحدّث يوميًا · التقديم يتم على موقع الإعلان الأصلي",
@@ -426,7 +402,7 @@ const I18N = {
   },
   en: {
     page_title: "Masar — Your guide to jobs in Saudi Arabia",
-    nav_jobs: "Jobs", nav_dash: "Dashboard", nav_team: "Team", nav_insights: "Field insights",
+    nav_jobs: "Jobs", nav_dash: "Market dashboard", nav_team: "Team", nav_insights: "Field insights",
     hero_title: "The latest jobs in Saudi Arabia, in one place",
     hero_sub: "Collected automatically every day from multiple sources: the latest job openings",
     stat_jobs: "open jobs", stat_companies: "companies", stat_cities: "cities", stat_sources: "sources",
@@ -440,7 +416,6 @@ const I18N = {
     no_title: "Untitled", no_company: "Company not specified", no_city: "Not specified", exp: "Experience:", view_job: "View job",
     today: "Today", yesterday: "Yesterday", two_days: "2 days ago",
     days_few: n => `${n} days ago`, days_many: n => `${n} days ago`,
-    dash_title: "Dashboard", dash_frame: "Masar dashboard",
     team_title: "Team", team_sub: "The team behind Masar. Get in touch and see our CVs.", cv: "CV",
     footer1: "Masar — Data Engineering capstone · Saudi Digital Academy × WeCloudData",
     footer2: "Data is collected from public sources and refreshed daily · Applications happen on the original job posting",
@@ -468,7 +443,6 @@ function applyStaticText() {
   b.textContent = T("switch_label");
   b.setAttribute("aria-label", T("switch_aria"));
   b.lang = isAr() ? "en" : "ar";
-  $("dashboardFrame").title = T("dash_frame");
 }
 
 function setLang(l) {
@@ -701,12 +675,6 @@ async function loadJobs() {
   } catch (e) {
     $("results").innerHTML = `<div class="empty">${T("load_error")}</div>`;
   }
-}
-
-if (DASHBOARD_URL) {
-  $("dashboardLink").hidden = false;
-  $("dashboard").hidden = false;
-  $("dashboardFrame").src = DASHBOARD_URL;
 }
 
 $("search").addEventListener("input", debounce(applyFilters, 150));

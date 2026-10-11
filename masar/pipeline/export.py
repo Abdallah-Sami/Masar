@@ -1,7 +1,8 @@
 """
 Export the website files from gold:
 
-  <site>/jobs.json   same fields the current website reads (plus skills/salary)
+  <site>/jobs.json   same fields the current website reads (plus skills/salary/field);
+                     also feeds the dashboard page, which filters it in the browser
   <site>/stats.json  market numbers for a future stats section on the site
   <site>/fields.json per field and per popular title: titles, skills, companies,
                      cities, work mode, experience, salary, monthly trend
@@ -44,6 +45,7 @@ def _views(con) -> None:
 JOBS_SQL = """
     SELECT j.job_url, j.job_id, j.job_title, j.work_mode, j.employment_type, j.experience_needed,
            j.qualification_required, j.company_name, j.city, j.source_name, j.posted_date_key,
+           j.job_field, j.experience_band,
            j.salary_text AS salary, j.salary_min, j.salary_max, j.salary_currency,
            list(k.skill_name ORDER BY k.skill_name) FILTER (WHERE k.skill_name IS NOT NULL) AS skills
     FROM jobs j
@@ -151,7 +153,12 @@ def build_fields(con) -> dict:
         prof = _group_profile(con, "job_title = ?", [title], top=8)
         prof.pop("top_titles")
         titles.append({"title": title, "field": fid, **prof})
-    return {"updated_at": storage.iso(), "total_jobs": total, "fields": fields, "titles": titles}
+    # The whole market in one profile (shown first on the insights page).
+    market = _group_profile(con, "TRUE", [])
+    market["companies"] = con.execute("SELECT count(DISTINCT company_name) FROM jobs "
+                                      "WHERE company_name <> 'Unknown'").fetchone()[0]
+    return {"updated_at": storage.iso(), "total_jobs": total, "market": market,
+            "fields": fields, "titles": titles}
 
 
 def run(log=print) -> dict:

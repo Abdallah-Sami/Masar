@@ -109,6 +109,8 @@
     h1 { font-size: 22px; }
   }
   @media (max-width: 420px) { .brand-logo { height: 30px; } .nav a.hide-sm { display: none; } }
+  @media (max-width: 560px) { .topbar-inner { flex-wrap: wrap; } .nav { order: 3; width: 100%; margin: 0; overflow-x: auto; }
+    .lang-btn { margin-inline-start: auto; } }
 </style>
 </head>
 <body>
@@ -119,6 +121,7 @@
     </a>
     <nav class="nav">
       <a href="./" data-i18n="nav_jobs">الوظائف</a>
+      <a href="./dashboard.html" data-i18n="nav_dash">لوحة السوق</a>
       <a href="./insights.html" aria-current="page" data-i18n="nav_insights">تحليل التخصصات</a>
       <a href="./#team" class="hide-sm" data-i18n="nav_team">الفريق</a>
     </nav>
@@ -163,13 +166,15 @@ const EXP_COLORS = ["#bfe6dc", "#6fc8b2", "#12a086", "#0a5e4f"];
 
 const I18N = {
   ar: {
-    page_title: "مسار — تحليل التخصصات", nav_jobs: "الوظائف", nav_insights: "تحليل التخصصات", nav_team: "الفريق",
+    page_title: "مسار — تحليل التخصصات", nav_jobs: "الوظائف", nav_dash: "لوحة السوق", nav_insights: "تحليل التخصصات", nav_team: "الفريق",
     hero_title: "وش يطلب السوق في تخصصك؟",
     hero_sub: "اختر تخصص أو اكتب مسمى وظيفي، وتشوف المسميات الأكثر طلبًا، والمهارات المطلوبة، والشركات اللي توظف، والمدن والرواتب، من الوظائف المجمّعة في مسار.",
     search_ph: "مثال: محاسب، Data Analyst، تمريض", fields_label: "التخصصات", loading: "جاري التحميل...",
     switch_label: "EN", switch_aria: "Switch to English",
     k_jobs: "وظيفة", k_share: "من كل الوظائف", k_salary: "متوسط الراتب الشهري", k_city: "أكثر مدينة",
     k_no_salary: "غير متوفر", sar: "ريال",
+    all: "السوق كامل", all_title: "سوق العمل كامل", k_companies: "شركة توظف",
+    fields_card: "التخصصات الأكثر طلبًا", fields_hint: "اضغط على أي تخصص عشان تشوف تحليله.",
     titles: "المسميات الأكثر طلبًا", titles_hint: "اضغط على أي مسمى عشان تشوف تحليله.",
     skills: "المهارات الأكثر طلبًا", skills_hint: n => `نسبة الإعلانات اللي تطلب كل مهارة، من ${fmt(n)} إعلان فيه وصف كامل.`,
     skills_few: "ما فيه إعلانات كافية بوصف كامل لهذا الاختيار حتى الآن. الأرقام تزيد مع كل تحديث يومي.",
@@ -182,13 +187,15 @@ const I18N = {
     error: "ما قدرنا نحمّل البيانات. حدّث الصفحة بعد شوي.",
   },
   en: {
-    page_title: "Masar — Field insights", nav_jobs: "Jobs", nav_insights: "Field insights", nav_team: "Team",
+    page_title: "Masar — Field insights", nav_jobs: "Jobs", nav_dash: "Market dashboard", nav_insights: "Field insights", nav_team: "Team",
     hero_title: "What does the market want in your field?",
     hero_sub: "Pick a field or type a job title to see the most common titles, the skills employers ask for, who is hiring, and cities and salaries, from the jobs Masar collects.",
     search_ph: "e.g. Accountant, Data Analyst, Nursing", fields_label: "Fields", loading: "Loading...",
     switch_label: "عربي", switch_aria: "التبديل إلى العربية",
     k_jobs: "jobs", k_share: "of all jobs", k_salary: "median monthly salary", k_city: "top city",
     k_no_salary: "not available", sar: "SAR",
+    all: "Whole market", all_title: "The whole job market", k_companies: "hiring companies",
+    fields_card: "Fields with the most jobs", fields_hint: "Click a field to see its breakdown.",
     titles: "Most common titles", titles_hint: "Click a title to see its own breakdown.",
     skills: "Most requested skills", skills_hint: n => `Share of postings asking for each skill, out of ${fmt(n)} postings with a full description.`,
     skills_few: "Not enough postings with a full description here yet. This grows with every daily update.",
@@ -246,7 +253,8 @@ function bars(items, opts = {}) {
     const v = opts.pct ? i.pct : i.jobs;
     const label = opts.label ? opts.label(i.name) : i.name;
     const val = opts.pct ? `${i.pct}%` : fmt(i.jobs);
-    const link = opts.link ? ` link" role="button" tabindex="0" data-title="${esc(i.name)}` : "";
+    const link = opts.link ? ` link" role="button" tabindex="0" data-title="${esc(i.name)}`
+               : opts.field ? ` link" role="button" tabindex="0" data-field="${esc(i.name)}` : "";
     return `<div class="bar${link}"><span class="name" title="${esc(label)}"><bdi>${esc(label)}</bdi></span>
       <span class="val">${val}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(2, 100 * v / max)}%"></span></span></div>`;
   }).join("")}</div>`;
@@ -273,11 +281,12 @@ function trend(months) {
 function render() {
   const panel = $("panel");
   if (!current) { panel.innerHTML = ""; return; }
+  const isAll = current.kind === "all";
   const isField = current.kind === "field";
-  const p = isField ? DATA.fields.find(f => f.id === current.id) : DATA.titles.find(t => t.title === current.id);
+  const p = isAll ? DATA.market : isField ? DATA.fields.find(f => f.id === current.id) : DATA.titles.find(t => t.title === current.id);
   if (!p) { panel.innerHTML = `<div class="empty">${T("none")}</div>`; return; }
-  const field = isField ? p : DATA.fields.find(f => f.id === p.field);
-  const heading = isField ? fieldName(p) : p.title;
+  const field = isAll ? null : isField ? p : DATA.fields.find(f => f.id === p.field);
+  const heading = isAll ? T("all_title") : isField ? fieldName(p) : p.title;
   const share = isField ? p.share : Math.round(1000 * p.jobs / DATA.total_jobs) / 10;
   const tech = (p.top_skills || []).filter(s => !s.soft).slice(0, 12);
   const softs = (p.top_skills || []).filter(s => s.soft).slice(0, 8);
@@ -287,16 +296,18 @@ function render() {
   panel.innerHTML = `
     <div class="panel-head">
       <h2><bdi>${esc(heading)}</bdi></h2>
-      ${!isField && field ? `<span class="crumb">${esc(T("field_of", fieldName(field)))} · <button type="button" id="backBtn">${T("back")}</button></span>` : ""}
+      ${!isField && !isAll && field ? `<span class="crumb">${esc(T("field_of", fieldName(field)))} · <button type="button" id="backBtn">${T("back")}</button></span>` : ""}
     </div>
     <div class="kpis">
       <div class="kpi primary"><b>${fmt(p.jobs)}</b><span>${T("k_jobs")}</span></div>
-      <div class="kpi"><b>${share}%</b><span>${T("k_share")}</span></div>
+      ${isAll ? `<div class="kpi"><b>${fmt(p.companies || 0)}</b><span>${T("k_companies")}</span></div>`
+              : `<div class="kpi"><b>${share}%</b><span>${T("k_share")}</span></div>`}
       <div class="kpi"><b>${sal ? fmt(sal.median) : "—"}</b><span>${sal ? T("k_salary") + " (" + T("sar") + ")" : T("k_salary") + ": " + T("k_no_salary")}</span></div>
       <div class="kpi"><b><bdi>${p.top_cities && p.top_cities[0] ? esc(cityLabel(p.top_cities[0].name)) : "—"}</bdi></b><span>${T("k_city")}</span></div>
     </div>
     <div class="grid">
-      ${isField ? `<div class="card"><h3>${T("titles")}</h3><p class="hint">${T("titles_hint")}</p>${bars(p.top_titles.slice(0, 10), { link: true })}</div>` : ""}
+      ${isAll ? `<div class="card"><h3>${T("fields_card")}</h3><p class="hint">${T("fields_hint")}</p>${bars(DATA.fields.filter(f => f.id !== "other").slice(0, 10).map(f => ({ name: f.id, jobs: f.jobs })), { field: true, label: id => fieldName(DATA.fields.find(f => f.id === id)) })}</div>` : ""}
+      ${isField || isAll ? `<div class="card"><h3>${T("titles")}</h3><p class="hint">${T("titles_hint")}</p>${bars(p.top_titles.slice(0, 10), { link: true })}</div>` : ""}
       <div class="card"><h3>${T("skills")}</h3>
         <p class="hint">${enough ? T("skills_hint", p.skills_basis) : T("skills_few")}</p>
         ${enough ? bars(tech, { pct: true }) : ""}
@@ -312,6 +323,7 @@ function render() {
 
   panel.querySelectorAll(".bar.link").forEach(el => {
     const go = () => {
+      if (el.dataset.field) { select("field", el.dataset.field); return; }
       const t = el.dataset.title;
       if (DATA.titles.some(x => x.title === t)) select("title", t);
       else { $("q").value = t; }
@@ -325,14 +337,15 @@ function render() {
 
 function renderChips() {
   const activeField = current && (current.kind === "field" ? current.id : (DATA.titles.find(t => t.title === current.id) || {}).field);
-  $("chips").innerHTML = DATA.fields.map(f =>
+  const allChip = DATA.market ? `<button type="button" class="chip" data-id="all" aria-pressed="${!!current && current.kind === "all"}">${T("all")} <small>${fmt(DATA.market.jobs)}</small></button>` : "";
+  $("chips").innerHTML = allChip + DATA.fields.map(f =>
     `<button type="button" class="chip" data-id="${f.id}" aria-pressed="${f.id === activeField}">${esc(fieldName(f))} <small>${fmt(f.jobs)}</small></button>`).join("");
-  $("chips").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => select("field", b.dataset.id)));
+  $("chips").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => b.dataset.id === "all" ? select("all", "all") : select("field", b.dataset.id)));
 }
 
 function select(kind, id, scroll = true) {
   current = { kind, id };
-  try { history.replaceState(null, "", "#" + (kind === "field" ? id : "t")); } catch (e) {}
+  try { history.replaceState(null, "", "#" + (kind === "title" ? "t" : id)); } catch (e) {}
   renderChips(); render();
   if (scroll) $("panel").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
@@ -387,8 +400,10 @@ fetch("./fields.json", { cache: "no-store" })
   .then(d => {
     DATA = d;
     const h = location.hash.slice(1);
-    const first = DATA.fields.find(f => f.id === h) || DATA.fields[0];
-    select("field", first.id, false);
+    const f = DATA.fields.find(x => x.id === h);
+    if (f) select("field", f.id, false);
+    else if (DATA.market) select("all", "all", false);
+    else select("field", DATA.fields[0].id, false);
     renderNote();
   })
   .catch(() => { $("chips").innerHTML = `<span class="empty">${T("error")}</span>`; });
