@@ -149,6 +149,8 @@ def run() -> int:
         log.error("Sitemap request failed: %s", e)
         all_urls = []
     run_.listings_seen = len(all_urls)
+    if len(all_urls) >= 1000:          # a full sitemap = the list of jobs still open
+        run_.active_urls = set(all_urls)
 
     new_urls = [u for u in all_urls if u not in run_.known_urls]
     cap = env_int("SABBAR_MAX_JOBS", 900)

@@ -66,7 +66,8 @@ TABLES = {
                CAST(strftime(last_seen_at, '%Y%m%d') AS BIGINT) AS last_seen_date_key,
                job_url, apply_url, salary_min, salary_max, salary_currency, salary_period, salary_text,
                experience_min, experience_max, len(skills) AS skill_count,
-               posted_date_estimated, is_primary, dup_key, times_seen, job_field, skills_known
+               posted_date_estimated, is_primary, coalesce(is_active, TRUE) AS is_active,
+               dup_key, times_seen, job_field, skills_known
         FROM silver""",
 
     "bridge_job_posting_skill": f"""

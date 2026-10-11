@@ -35,7 +35,8 @@ BRONZE_COLUMNS = {c: "VARCHAR" for c in (
     "_source_file", "_file_hash", "_ingested_at",
 )}
 
-SOURCE_NAMES = {"sabbar": "Sabbar", "tanqeeb": "Tanqeeb", "wuzzuf": "Wuzzuf"}
+SOURCE_NAMES = {"sabbar": "Sabbar", "tanqeeb": "Tanqeeb", "wuzzuf": "Wuzzuf",
+                "workable": "Workable", "companies": "Company sites"}
 
 
 def _s(v):
@@ -174,7 +175,28 @@ def from_seed(item: dict) -> dict:
     }
 
 
-NORMALIZERS = {"wuzzuf": from_wuzzuf, "sabbar": from_sabbar, "tanqeeb": from_tanqeeb, "seed": from_seed}
+def from_board(item: dict) -> dict:
+    """Workable and company career boards (Greenhouse, Lever): same record shape."""
+    return {
+        "raw_native_id": _s(item.get("id")),
+        "raw_job_title": _s(item.get("title")),
+        "raw_company_name": _s(item.get("company")),
+        "raw_job_description": _s(item.get("description")),
+        "raw_job_url": _s(item.get("url")),
+        "raw_apply_url": _s(item.get("apply_url")),
+        "raw_country": _s(item.get("country")),
+        "raw_city": _s(item.get("city")),
+        "raw_location": _s(item.get("location")),
+        "raw_work_mode": _s(item.get("work_mode")),
+        "raw_employment_type": _s(item.get("employment_type")),
+        "raw_industry": _s(item.get("department")),
+        "raw_posted_date": _s(item.get("posted_date")),
+        "raw_collected_at": _s(item.get("collected_at")),
+    }
+
+
+NORMALIZERS = {"wuzzuf": from_wuzzuf, "sabbar": from_sabbar, "tanqeeb": from_tanqeeb, "seed": from_seed,
+               "workable": from_board, "companies": from_board}
 
 
 # ---------------------------------------------------------------------------

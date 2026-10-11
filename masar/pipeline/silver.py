@@ -16,6 +16,7 @@ Fixes vs the old notebooks:
 """
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from urllib.parse import urlsplit, urlunsplit
 
@@ -23,6 +24,7 @@ from masar import storage
 from masar.pipeline import io
 from masar.pipeline import cleaning as c
 from masar.pipeline import ai_skills, taxonomy
+from masar.pipeline.bronze import SOURCE_NAMES
 
 SILVER_COLUMNS = {
     "job_id": "VARCHAR", "source": "VARCHAR", "native_id": "VARCHAR",
@@ -38,7 +40,7 @@ SILVER_COLUMNS = {
     "skills": "VARCHAR[]", "skills_known": "BOOLEAN", "job_field": "VARCHAR", "description": "VARCHAR",
     "posted_at": "TIMESTAMP", "posted_date_estimated": "BOOLEAN",
     "first_seen_at": "TIMESTAMP", "last_seen_at": "TIMESTAMP", "times_seen": "INTEGER",
-    "dup_key": "VARCHAR", "is_primary": "BOOLEAN", "posted_month": "VARCHAR",
+    "dup_key": "VARCHAR", "is_primary": "BOOLEAN", "is_active": "BOOLEAN", "posted_month": "VARCHAR",
 }
 REJECTED_COLUMNS = {"source": "VARCHAR", "raw_job_url": "VARCHAR", "raw_job_title": "VARCHAR",
                     "raw_city": "VARCHAR", "raw_country": "VARCHAR", "reason": "VARCHAR",
@@ -165,6 +167,7 @@ def merge_sightings(rows: list[dict]) -> dict:
 
 
 DUP_WINDOW_DAYS = 30
+SOURCE_RANK = {"Company sites": 0, "Workable": 1}   # lower = preferred when the same job is on several sites
 
 
 def flag_duplicates(jobs: list[dict]) -> None:
@@ -184,7 +187,9 @@ def flag_duplicates(jobs: list[dict]) -> None:
     for members in groups.values():
         if len(members) < 2:
             continue
-        members.sort(key=lambda j: (j["posted_at"] or datetime.max, j["source"] or "", j["job_id"]))
+        # The employer's own posting wins (its link is the official apply page), then the earliest one.
+        members.sort(key=lambda j: (SOURCE_RANK.get(j["source"], 9), j["posted_at"] or datetime.max,
+                                    j["source"] or "", j["job_id"]))
         primaries: list[dict] = []
         for j in members:
             match = next((p for p in primaries if p["source"] != j["source"] and p["posted_at"] and j["posted_at"]
@@ -229,10 +234,44 @@ def apply_ai_skills(jobs: list[dict]) -> int:
     return n
 
 
+# A job counts as still open when:
+#  * its source publishes a full list of open jobs (data/active/<source>.json):
+#    the job is on that list, or was first seen after the list was taken;
+#  * otherwise: it was posted in the last ACTIVE_MAX_DAYS days.
+ACTIVE_MAX_DAYS = 45
+
+
+def load_active_lists() -> dict[str, tuple[datetime, set[str]]]:
+    out = {}
+    folder = storage.data_dir() / "active"
+    if folder.exists():
+        for f in sorted(folder.glob("*.json")):
+            d = storage.read_json(f, default=None) or {}
+            listed_at = c.parse_datetime(d.get("listed_at"))
+            urls = {u for u in (canonical_url(x) for x in d.get("urls") or []) if u}
+            if listed_at and d.get("urls") is not None:
+                out[SOURCE_NAMES.get(f.stem, f.stem)] = (listed_at, urls)   # file name = scraper name
+    return out
+
+
+def flag_active(jobs: list[dict], now: datetime | None = None) -> None:
+    lists = load_active_lists()
+    now = now or datetime.utcnow()
+    max_days = int(os.environ.get("ACTIVE_MAX_DAYS", ACTIVE_MAX_DAYS))
+    for j in jobs:
+        listed = lists.get(j["source"])
+        if listed:
+            listed_at, urls = listed
+            j["is_active"] = j["job_url"] in urls or (j["first_seen_at"] or now) > listed_at
+        else:
+            j["is_active"] = bool(j["posted_at"]) and (now - j["posted_at"]).days <= max_days
+
+
 def run(log=print) -> dict:
     lake = storage.data_dir() / "lake"
     con = io.connect()
     jobs, rejected = build(io.read_rows(lake / "bronze", con=con))
+    flag_active(jobs)
     ai = apply_ai_skills(jobs)
     # One folder per posted month keeps each file far below GitHub's 100 MB limit.
     io.write_rows(jobs, SILVER_COLUMNS, lake / "silver", con, partition_by="posted_month")
@@ -241,6 +280,7 @@ def run(log=print) -> dict:
     for r in rejected:
         reasons[r["reason"]] = reasons.get(r["reason"], 0) + 1
     result = {"silver_rows": len(jobs), "primary_rows": sum(j["is_primary"] for j in jobs),
+              "active_rows": sum(j["is_primary"] and j["is_active"] for j in jobs),
               "rejected_rows": len(rejected), "rejected_by_reason": reasons, "ai_skills_jobs": ai}
     log(f"[silver] {result}")
     return result

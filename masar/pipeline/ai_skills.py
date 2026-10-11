@@ -37,10 +37,16 @@ from masar.pipeline import io, taxonomy
 # name -> (key env var, endpoint, default model, style)
 PROVIDERS = {
     "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-               "gemini-2.5-flash-lite", "openai"),
+               "gemini-3.5-flash-lite", "openai"),
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1/chat/completions",
              "llama-3.3-70b-versatile", "openai"),
     "anthropic": ("ANTHROPIC_API_KEY", "https://api.anthropic.com/v1/messages", "claude-haiku-4-5", "anthropic"),
+}
+# Tried in order when the default model is not available to this key (404):
+# Google retires or limits older models, so one missing model must not stop the step.
+FALLBACK_MODELS = {
+    "gemini": ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash-lite"],
+    "groq": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
 }
 MAX_DESC_CHARS = 4000
 
@@ -124,6 +130,25 @@ def pick_provider() -> tuple[str, str] | None:
     return None
 
 
+class ModelNotFound(Exception):
+    pass
+
+
+def pick_model(provider: str, key: str, wanted: str | None, log=print) -> str | None:
+    """First model that answers a tiny test request."""
+    options = [wanted] if wanted else FALLBACK_MODELS.get(provider, [PROVIDERS[provider][2]])
+    for m in options:
+        try:
+            call_model('Reply with {"jobs": []}', provider, key, m)
+            return m
+        except ModelNotFound:
+            log(f"[ai_skills] model {m} not available, trying the next one")
+        except Exception as e:
+            log(f"[ai_skills] test call with {m} failed: {str(e)[:120]}")
+            return None
+    return None
+
+
 def call_model(prompt: str, provider: str, key: str, model: str) -> tuple[str, dict]:
     _, url, _, style = PROVIDERS[provider]
     if style == "anthropic":
@@ -138,6 +163,8 @@ def call_model(prompt: str, provider: str, key: str, model: str) -> tuple[str, d
         if r.status_code in (429, 500, 502, 503, 529):
             time.sleep(20 * attempt)       # free tiers: wait out the per-minute limit
             continue
+        if r.status_code == 404:
+            raise ModelNotFound(model)
         r.raise_for_status()
         data = r.json()
         if style == "anthropic":
@@ -155,7 +182,10 @@ def run(log=print) -> dict:
         log("[ai_skills] no AI key set (GEMINI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY): skipped.")
         return {"skipped": True}
     provider, key = picked
-    model = os.environ.get("AI_SKILLS_MODEL") or PROVIDERS[provider][2]
+    model = pick_model(provider, key, os.environ.get("AI_SKILLS_MODEL"), log)
+    if not model:
+        log(f"[ai_skills] no working {provider} model found: skipped (check the key).")
+        return {"provider": provider, "skipped": True, "failed": 0}
     delay = float(os.environ.get("AI_SKILLS_DELAY", "6"))
     log(f"[ai_skills] using {provider} / {model}")
     cap = int(os.environ.get("AI_SKILLS_MAX_JOBS", "1000"))

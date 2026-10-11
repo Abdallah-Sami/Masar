@@ -143,3 +143,88 @@ def test_ai_providers_parse_answers(monkeypatch):
         monkeypatch.delenv(env, raising=False)
     monkeypatch.setenv("GROQ_API_KEY", "g")
     assert ai_skills.pick_provider() == ("groq", "g")
+
+
+def test_flag_active_uses_full_list_then_age(tmp_path, monkeypatch):
+    from datetime import datetime
+    from masar import storage
+    from masar.pipeline import silver
+    monkeypatch.setenv("MASAR_DATA_DIR", str(tmp_path))
+    storage.write_json_atomic(storage.path("active", "sabbar.json"),
+                              {"run": "x", "listed_at": "2026-10-10T00:00:00Z",
+                               "urls": ["https://sabbar.com/ar/jobs/a"]})
+    now = datetime(2026, 10, 11)
+    jobs = [
+        {"source": "Sabbar", "job_url": "https://sabbar.com/en/jobs/a", "first_seen_at": datetime(2026, 9, 1), "posted_at": datetime(2026, 9, 1)},
+        {"source": "Sabbar", "job_url": "https://sabbar.com/en/jobs/b", "first_seen_at": datetime(2026, 9, 1), "posted_at": datetime(2026, 10, 9)},
+        {"source": "Sabbar", "job_url": "https://sabbar.com/en/jobs/c", "first_seen_at": datetime(2026, 10, 10, 5), "posted_at": datetime(2026, 10, 10)},
+        {"source": "Tanqeeb", "job_url": "https://tanqeeb.com/x", "first_seen_at": datetime(2026, 10, 1), "posted_at": datetime(2026, 10, 1)},
+        {"source": "Tanqeeb", "job_url": "https://tanqeeb.com/y", "first_seen_at": datetime(2026, 7, 1), "posted_at": datetime(2026, 7, 1)},
+    ]
+    silver.flag_active(jobs, now=now)
+    assert [j["is_active"] for j in jobs] == [True, False, True, True, False]
+
+
+class _Resp:
+    def __init__(self, data, status=200):
+        self._d, self.status_code = data, status
+    def json(self):
+        return self._d
+    def raise_for_status(self):
+        pass
+
+
+class _Session:
+    def __init__(self, pages):
+        self.pages, self.calls = list(pages), []
+    def get(self, url, params=None, timeout=None):
+        self.calls.append(params)
+        return self.pages.pop(0)
+
+
+def test_workable_pages_and_records(tmp_path, monkeypatch):
+    monkeypatch.setenv("MASAR_DATA_DIR", str(tmp_path))
+    from masar.sources import workable
+    from masar.sources.base import SourceRun
+    job = lambda i, country="Saudi Arabia": {
+        "id": str(i), "title": f"Job {i}", "url": f"https://jobs.workable.com/view/{i}",
+        "location": {"city": "Riyadh", "countryName": country}, "workplace": "hybrid",
+        "company": {"title": "Foodics"}, "description": "<p>Excel</p>", "created": "2026-10-03T13:32:00Z"}
+    s = _Session([_Resp({"totalSize": 3, "jobs": [job(1), job(2, "UAE")], "nextPageToken": "t1"}),
+                  _Resp({"totalSize": 3, "jobs": [job(3)]})])
+    monkeypatch.setattr(workable, "make_session", lambda: s)
+    monkeypatch.setattr(workable, "PAGE_DELAY", 0)
+    jobs, complete = workable.fetch_all(SourceRun("workable"))
+    assert complete and [j["id"] for j in jobs] == ["1", "3"]
+    assert s.calls[1]["pageToken"] == "t1"
+    rec = workable.to_record(jobs[0])
+    assert rec["company"] == "Foodics" and rec["city"] == "Riyadh" and rec["work_mode"] == "hybrid"
+
+
+def test_company_boards_keep_saudi_only():
+    from masar.sources import companies
+    gh = _Session([_Resp({"jobs": [
+        {"id": 1, "title": "AML Officer", "absolute_url": "https://x/1", "location": {"name": "Riyadh, Saudi Arabia"},
+         "content": "&lt;p&gt;Hi&lt;/p&gt;", "first_published": "2026-10-01T00:00:00Z"},
+        {"id": 2, "title": "Dubai role", "absolute_url": "https://x/2", "location": {"name": "Dubai, UAE"}}]})])
+    out = companies.from_greenhouse("tamara", "Tamara", gh)
+    assert [j["title"] for j in out] == ["AML Officer"] and out[0]["city"] == "Riyadh"
+    lv = _Session([_Resp([
+        {"id": "a", "text": "Intern", "hostedUrl": "https://l/a", "country": "SA",
+         "categories": {"location": "Riyadh", "commitment": "Internship"}, "createdAt": 1760000000000},
+        {"id": "b", "text": "Istanbul", "hostedUrl": "https://l/b", "country": "TR", "categories": {"location": "Istanbul"}}])])
+    out = companies.from_lever("trendyol", "Trendyol", lv)
+    assert [j["title"] for j in out] == ["Intern"] and out[0]["employment_type"] == "Internship"
+
+
+def test_ai_picks_first_available_model(monkeypatch):
+    from masar.pipeline import ai_skills
+    tried = []
+    def fake(prompt, provider, key, model):
+        tried.append(model)
+        if model != "gemini-3.1-flash-lite":
+            raise ai_skills.ModelNotFound(model)
+        return '{"jobs": []}', {}
+    monkeypatch.setattr(ai_skills, "call_model", fake)
+    assert ai_skills.pick_model("gemini", "k", None, log=lambda *a: None) == "gemini-3.1-flash-lite"
+    assert tried[:2] == ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]

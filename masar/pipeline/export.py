@@ -4,17 +4,20 @@ Export the website files from gold:
   <site>/jobs.json   same fields the current website reads (plus skills/salary/field);
                      also feeds the dashboard page, which filters it in the browser
   <site>/stats.json  market numbers for a future stats section on the site
-  <site>/fields.json per field and per popular title: titles, skills, companies,
+  <site>/details/<xx>.json  full job (with description) for the job page, by job_id prefix
+<site>/fields.json per field and per popular title: titles, skills, companies,
                      cities, work mode, experience, salary, monthly trend
 
 <site> = MASAR_SITE_DIR (default ./site). Only primary postings are exported,
 so a job listed on two sources shows once.
-EXPORT_MAX_AGE_DAYS (default 0 = everything) limits jobs.json to recent posts.
+jobs.json holds open jobs only (is_active, see silver.flag_active).
+EXPORT_MAX_AGE_DAYS (default 0 = no extra limit) can cut it further by posting age.
 """
 from __future__ import annotations
 
 import json
 import os
+import shutil
 from pathlib import Path
 
 from masar import storage
@@ -161,12 +164,42 @@ def build_fields(con) -> dict:
             "fields": fields, "titles": titles}
 
 
+DETAIL_SHARDS = 2          # first N hex characters of job_id -> 256 files
+MAX_DESC_CHARS = 8000
+
+
+def write_details(con, out: Path, jobs: list[dict]) -> int:
+    """details/<xx>.json: everything the job page needs, for the jobs whose id
+    starts with <xx>. The job page loads one small file instead of all jobs."""
+    silver = storage.data_dir() / "lake" / "silver"
+    extra = {}
+    if io.exists(silver):
+        for job_id, desc, apply_url, industry in con.execute(
+                f"SELECT job_id, description, apply_url, industry FROM {io.parquet(silver)} WHERE is_primary").fetchall():
+            extra[job_id] = {"description": (desc or "")[:MAX_DESC_CHARS] or None,
+                             "apply_url": apply_url, "industry": industry}
+    shards: dict[str, dict] = {}
+    for j in jobs:
+        rec = {**j, **{k: v for k, v in extra.get(j["job_id"], {}).items() if v}}
+        shards.setdefault(j["job_id"][:DETAIL_SHARDS], {})[j["job_id"]] = rec
+    folder = out / "details"
+    if folder.exists():
+        shutil.rmtree(folder)
+    folder.mkdir(parents=True)
+    for prefix, recs in shards.items():
+        write_compact(folder / f"{prefix}.json", recs)
+    return len(shards)
+
+
 def run(log=print) -> dict:
     con = io.connect()
     _views(con)
     max_age = int(os.environ.get("EXPORT_MAX_AGE_DAYS", "0") or 0)
     age = (f"strptime(CAST(j.posted_date_key AS VARCHAR), '%Y%m%d') >= current_date - INTERVAL {max_age} DAY"
            if max_age else "TRUE")
+    # The jobs list (and the dashboard built on it) shows open jobs only;
+    # stats.json and fields.json keep the full history for the analysis.
+    age += " AND j.is_active"
     out = site_dir()
     cur = con.execute(JOBS_SQL.format(age=age))
     names = [d[0] for d in cur.description]
@@ -174,10 +207,12 @@ def run(log=print) -> dict:
     jobs = [{k: v for k, v in zip(names, row) if v is not None} for row in cur.fetchall()]
     write_compact(out / "jobs.json", jobs)
     exported = len(jobs)
+    detail_files = write_details(con, out, jobs)
     write_compact(out / "stats.json", build_stats(con))
     fields = build_fields(con)
     write_compact(out / "fields.json", fields)
-    result = {"exported_jobs": exported, "fields": len(fields["fields"]), "title_profiles": len(fields["titles"]),
+    result = {"exported_jobs": exported, "detail_files": detail_files, "closed_hidden": con.execute(
+                  "SELECT count(*) FROM jobs WHERE NOT is_active").fetchone()[0], "fields": len(fields["fields"]), "title_profiles": len(fields["titles"]),
               "site_dir": str(out)}
     log(f"[export] {result}")
     return result

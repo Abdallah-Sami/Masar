@@ -120,7 +120,9 @@ def parse_job_page(html: str, url: str) -> dict:
     }
 
 
-def discover(run: SourceRun, fetcher: Fetcher) -> list[str]:
+def discover(run: SourceRun, fetcher: Fetcher, want: int = 0) -> list[str]:
+    """New job URLs from the search pages. Stops as soon as `want` new ones are
+    found, so the time budget is left for fetching the jobs themselves."""
     max_pages = env_int("TANQEEB_MAX_PAGES", 1000)
     stop_after = env_int("TANQEEB_STOP_AFTER_KNOWN_PAGES", 40)
     new_urls, queued, known_streak = [], set(), 0
@@ -143,6 +145,11 @@ def discover(run: SourceRun, fetcher: Fetcher) -> list[str]:
         new_urls.extend(fresh)
         log.info("Page %d: %d links, %d new (total new %d)", page, len(links), len(fresh), len(new_urls))
 
+        if want and len(new_urls) >= want:
+            log.info("Found %d new jobs, enough for this run.", len(new_urls))
+            break
+        if run.should_stop():
+            break
         known_streak = 0 if fresh else known_streak + 1
         if known_streak >= stop_after:
             log.info("%d pages in a row with nothing new. Caught up.", stop_after)
@@ -155,8 +162,8 @@ def run() -> int:
     run_ = SourceRun(SOURCE, log=log)
     fetcher = Fetcher(make_session(), log, timeout=TIMEOUT)
 
-    urls = discover(run_, fetcher)
     cap = env_int("TANQEEB_MAX_JOBS", 300)
+    urls = discover(run_, fetcher, want=cap)
     if cap and len(urls) > cap:
         log.info("Capping to %d of %d new jobs; the rest will be picked up next run.", cap, len(urls))
         urls = urls[:cap]

@@ -124,6 +124,9 @@ class SourceRun:
     failed: list = field(default_factory=list, init=False)
     listings_seen: int = field(default=0, init=False)  # job links found, known or new
     discovered: int = field(default=0, init=False)     # new links queued for scraping
+    # Every job URL the site lists right now. Set this only when the scraper saw
+    # the FULL list (e.g. a sitemap): jobs missing from it are treated as closed.
+    active_urls: set | None = field(default=None, init=False)
 
     def __post_init__(self):
         self.log = self.log or get_logger(self.source)
@@ -227,6 +230,11 @@ class SourceRun:
         if self.failed:
             storage.write_json_atomic(
                 storage.path("failed", self.source, f"{self.source}_{self.stamp}.json"), self.failed)
+        if self.active_urls is not None:
+            # Only the latest full list matters, so one file per source, overwritten.
+            storage.write_json_atomic(storage.path("active", f"{self.source}.json"),
+                                      {"run": self.stamp, "listed_at": self.started_at,
+                                       "urls": sorted(self.active_urls)})
 
         summary = {
             "source": self.source, "run": self.stamp, "started_at": self.started_at,

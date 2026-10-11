@@ -76,6 +76,20 @@ jobs:
         timeout-minutes: 90
         run: python -m masar.sources.sabbar
 
+      # Workable's public job board: all Saudi jobs of companies hiring through Workable.
+      - name: Scrape Workable
+        id: workable
+        continue-on-error: true
+        timeout-minutes: 30
+        run: python -m masar.sources.workable
+
+      # Company career pages on Greenhouse / Lever (list in masar/sources/companies.py).
+      - name: Scrape company sites
+        id: companies
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python -m masar.sources.companies
+
       # Optional: reads job descriptions with AI to find skills. Does nothing
       # until an AI key secret is added (GEMINI_API_KEY is free). Each job is read once;
       # jobs found today are read on the next run.
@@ -109,14 +123,14 @@ jobs:
           # state, so it does not grow with every run.
           git push --quiet --force "$REPO_URL" data
 
-      # The website = website/ folder from main + today's jobs.json, stats.json and fields.json.
+      # The website = website/ folder from main + today's exported data (site/: json files and details/).
       # Published as a single force-pushed commit on gh-pages (created if missing).
       - name: Update website (gh-pages)
         if: steps.pipeline.outcome == 'success'
         run: |
           mkdir pages
           cp -r website/. pages/
-          cp site/*.json pages/
+          cp -r site/. pages/
           touch pages/.nojekyll
           cd pages
           git init --quiet -b gh-pages
@@ -126,6 +140,21 @@ jobs:
           git commit --quiet -m "site $(date -u +%Y-%m-%d)"
           git push --quiet --force "$REPO_URL" gh-pages
 
+      # Same website on Cloudflare Pages (faster in Saudi Arabia, free visitor stats).
+      # Skipped until the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets are added.
+      - name: Update website (Cloudflare Pages)
+        if: steps.pipeline.outcome == 'success'
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "No Cloudflare secrets yet: skipped."; exit 0; fi
+          mkdir cf
+          cp -r website/. cf/
+          cp -r site/. cf/
+          npx --yes wrangler@3 pages deploy cf --project-name=masar --branch=main --commit-dirty=true
+
       # A red run = GitHub emails you. This fails the run if any scraper broke
       # (blocked, or the site changed its layout), after data was saved.
       - name: Alert if a scraper is unhealthy
@@ -134,6 +163,8 @@ jobs:
           bad=""
           [ "${{ steps.tanqeeb.outcome }}" != "success" ] && bad="$bad tanqeeb"
           [ "${{ steps.sabbar.outcome }}" != "success" ] && bad="$bad sabbar"
+          [ "${{ steps.workable.outcome }}" != "success" ] && bad="$bad workable"
+          [ "${{ steps.companies.outcome }}" != "success" ] && bad="$bad companies"
           if [ -n "$bad" ]; then
             echo "::error::Unhealthy scrapers:$bad (see data/runs and data/failed on the data branch)"
             exit 1
