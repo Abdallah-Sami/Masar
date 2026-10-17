@@ -1,0 +1,67 @@
+/* Shared look for every Masar page (design A: navy + teal + gold).
+   Page-specific styles stay in each page. */
+:root {
+  --navy: #0F2A3D;
+  --navy-2: #173A52;
+  --teal: #13A39A;
+  --teal-strong: #0B7A72;
+  --teal-bg: #E6F4F2;
+  --gold: #F0B35F;
+  --gold-bg: #FDF1DC;
+  --gold-text: #7A4E0B;
+  --page: #F4F6F5;
+  --card: #FFFFFF;
+  --line: #E3E8EA;
+  --line-strong: #CCD5DA;
+  --ink: #0F2A3D;
+  --ink-muted: #51616C;
+  --on-navy: #FFFFFF;
+  --on-navy-muted: #C9D6DE;
+  --font-body: "IBM Plex Sans Arabic", -apple-system, "Segoe UI", Tahoma, sans-serif;
+  --font-head: "Noto Kufi Arabic", "IBM Plex Sans Arabic", Tahoma, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--font-body); background: var(--page); color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+bdi { unicode-bidi: isolate; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+
+/* ---------- Header ---------- */
+.site-header { background: var(--navy); color: var(--on-navy); }
+.site-header .wrap { display: flex; align-items: center; gap: 24px; padding-top: 18px; padding-bottom: 18px; }
+.site-logo { display: block; flex-shrink: 0; }
+.site-logo img { height: 38px; width: auto; display: block; }
+.site-nav { display: flex; gap: 4px; margin-inline-start: auto; }
+.site-nav a {
+  color: var(--on-navy-muted); text-decoration: none; padding: 10px 14px; border-radius: 10px;
+  font-size: 15px; white-space: nowrap;
+}
+.site-nav a:hover { color: var(--on-navy); background: rgba(255,255,255,0.06); }
+.site-nav a[aria-current="page"] { color: var(--on-navy); background: rgba(255,255,255,0.10); }
+.site-header .lang-btn {
+  font: inherit; font-weight: 700; font-size: 14px; color: var(--navy); background: var(--gold);
+  border: 0; border-radius: 10px; padding: 0 16px; min-height: 44px; cursor: pointer; flex-shrink: 0;
+}
+.site-header .lang-btn:hover { background: #F5C47F; }
+
+/* ---------- Footer ---------- */
+.site-footer { background: var(--navy); color: var(--on-navy-muted); margin-top: 64px; }
+.site-footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding-top: 28px; padding-bottom: 28px; font-size: 14px; }
+.site-footer img { height: 28px; width: auto; display: block; }
+.site-footer .fine { margin-inline-start: auto; display: flex; flex-direction: column; gap: 4px; }
+.site-footer a { color: var(--on-navy); }
+
+@media (max-width: 760px) {
+  .wrap { padding: 0 16px; }
+  .site-header .wrap { flex-wrap: wrap; gap: 10px 12px; padding-top: 12px; padding-bottom: 8px; }
+  .site-logo img { height: 30px; }
+  .site-header .lang-btn { margin-inline-start: auto; }
+  .site-nav { order: 3; width: 100%; margin: 0 -6px; overflow-x: auto; scrollbar-width: none; }
+  .site-nav a { padding: 10px 10px; font-size: 14px; }
+  .site-footer .fine { margin-inline-start: 0; }
+}
