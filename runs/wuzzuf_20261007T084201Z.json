@@ -1,0 +1,13 @@
+{
+ "source": "wuzzuf",
+ "run": "20261007T084201Z",
+ "started_at": "2026-10-07T08:42:01Z",
+ "finished_at": "2026-10-07T08:51:31Z",
+ "status": "blocked",
+ "listings_seen": 77,
+ "discovered_new": 77,
+ "scraped": 0,
+ "failed": 15,
+ "gone": 0,
+ "checkpoint_size": 0
+}

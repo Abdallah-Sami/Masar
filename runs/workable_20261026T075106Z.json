@@ -1,0 +1,13 @@
+{
+ "source": "workable",
+ "run": "20261026T075106Z",
+ "started_at": "2026-10-26T07:51:06Z",
+ "finished_at": "2026-10-26T07:55:48Z",
+ "status": "ok",
+ "listings_seen": 3295,
+ "discovered_new": 39,
+ "scraped": 39,
+ "failed": 0,
+ "gone": 0,
+ "checkpoint_size": 3742
+}
