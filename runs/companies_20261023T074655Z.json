@@ -1,0 +1,13 @@
+{
+ "source": "companies",
+ "run": "20261023T074655Z",
+ "started_at": "2026-10-23T07:46:55Z",
+ "finished_at": "2026-10-23T07:46:59Z",
+ "status": "ok",
+ "listings_seen": 24,
+ "discovered_new": 2,
+ "scraped": 2,
+ "failed": 0,
+ "gone": 0,
+ "checkpoint_size": 28
+}

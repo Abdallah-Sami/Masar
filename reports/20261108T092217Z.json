@@ -1,0 +1,206 @@
+{
+ "run": "20261108T092217Z",
+ "started_at": "2026-11-08T09:22:17Z",
+ "bronze": {
+  "files_loaded": 2,
+  "files_skipped": 0,
+  "rows_loaded": 32,
+  "bronze_rows": 59213,
+  "archives_pruned": 0
+ },
+ "silver": {
+  "silver_rows": 53567,
+  "primary_rows": 50647,
+  "active_rows": 20918,
+  "rejected_rows": 0,
+  "rejected_by_reason": {},
+  "ai_skills_jobs": 27275
+ },
+ "gold": {
+  "dim_source": 5,
+  "dim_company": 8829,
+  "dim_location": 185,
+  "dim_job": 25744,
+  "dim_field": 23,
+  "dim_skill": 17662,
+  "dim_date": 1930,
+  "fact_job_posting": 53567,
+  "bridge_job_posting_skill": 255591
+ },
+ "checks": [
+  {
+   "check": "silver job_id unique",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "silver required fields present",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "every duplicate has a primary",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "fact rows = silver rows",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "dim_source key unique",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "dim_company key unique",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "dim_location key unique",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "dim_job key unique",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "dim_skill key unique",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "dim_date key unique",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "fact -> dim_source keys valid",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "fact -> dim_company keys valid",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "fact -> dim_location keys valid",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "fact -> dim_job keys valid",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "fact -> dim_date keys valid",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "bridge -> fact valid",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "bridge -> skill valid",
+   "value": 0,
+   "expected": 0,
+   "passed": true
+  },
+  {
+   "check": "jobs to export",
+   "value": 50647,
+   "expected": ">= 1",
+   "passed": true
+  }
+ ],
+ "export": {
+  "exported_jobs": 20918,
+  "detail_files": 256,
+  "closed_hidden": 29729,
+  "fields": 23,
+  "title_profiles": 393,
+  "site_dir": "/home/runner/work/Masar/Masar/site"
+ },
+ "scrapers": [
+  {
+   "source": "sabbar",
+   "run": "20261108T090259Z",
+   "started_at": "2026-11-08T09:02:59Z",
+   "finished_at": "2026-11-08T09:03:17Z",
+   "status": "ok",
+   "listings_seen": 14746,
+   "discovered_new": 17,
+   "scraped": 17,
+   "failed": 0,
+   "gone": 0,
+   "checkpoint_size": 33382
+  },
+  {
+   "source": "tanqeeb",
+   "run": "20261108T090050Z",
+   "started_at": "2026-11-08T09:00:50Z",
+   "finished_at": "2026-11-08T09:02:59Z",
+   "status": "no_listings",
+   "listings_seen": 0,
+   "discovered_new": 0,
+   "scraped": 0,
+   "failed": 0,
+   "gone": 0,
+   "checkpoint_size": 4497
+  },
+  {
+   "source": "workable",
+   "run": "20261108T090317Z",
+   "started_at": "2026-11-08T09:03:17Z",
+   "finished_at": "2026-11-08T09:07:33Z",
+   "status": "ok",
+   "listings_seen": 3215,
+   "discovered_new": 15,
+   "scraped": 15,
+   "failed": 0,
+   "gone": 0,
+   "checkpoint_size": 4113
+  },
+  {
+   "source": "companies",
+   "run": "20261108T090733Z",
+   "started_at": "2026-11-08T09:07:33Z",
+   "finished_at": "2026-11-08T09:07:37Z",
+   "status": "ok",
+   "listings_seen": 20,
+   "discovered_new": 0,
+   "scraped": 0,
+   "failed": 0,
+   "gone": 0,
+   "checkpoint_size": 34
+  }
+ ],
+ "unhealthy_sources": [
+  "tanqeeb"
+ ],
+ "finished_at": "2026-11-08T09:31:38Z"
+}
