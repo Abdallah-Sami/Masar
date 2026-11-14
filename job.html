@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مسار — تفاصيل الوظيفة</title>
+<meta name="description" content="تفاصيل الوظيفة والمهارات المطلوبة ومقارنة الراتب بالسوق، من مسار.">
+<meta name="theme-color" content="#0F2A3D">
+<link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/site.css">
+<style>
+  .band { background: var(--navy); color: #fff; }
+  .band .wrap { padding-top: 28px; padding-bottom: 40px; }
+  .crumbs { font-size: 14px; color: var(--on-navy-muted); display: flex; gap: 8px; flex-wrap: wrap; }
+  .crumbs a { color: var(--on-navy-muted); }
+  .crumbs a:hover { color: #fff; }
+  .title-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+  .initial { width: 64px; height: 64px; border-radius: 16px; background: var(--teal-bg); color: var(--teal-strong); display: grid; place-items: center; font-family: var(--font-head); font-weight: 800; font-size: 26px; flex-shrink: 0; }
+  .title-text { flex: 1 1 400px; min-width: 0; }
+  h1 { margin: 0; font-family: var(--font-head); font-size: 34px; line-height: 1.45; }
+  .company { margin-top: 6px; font-size: 17px; color: var(--on-navy-muted); }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; font-size: 14px; }
+  .tag { background: rgba(255,255,255,0.10); border-radius: 8px; padding: 5px 12px; }
+  .tag.salary { background: var(--gold); color: var(--navy); font-weight: 700; }
+  .apply-big { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--teal-strong); color: #fff; text-decoration: none; font-weight: 700; font-size: 17px; border-radius: 12px; padding: 0 28px; min-height: 54px; }
+  .apply-big:hover { background: var(--teal); }
+
+  .layout { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; padding-top: 32px; }
+  .content { flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .aside { flex: 1 1 300px; display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+  .card h2 { margin: 0 0 14px; font-family: var(--font-head); font-size: 20px; line-height: 1.5; }
+  .desc { white-space: pre-line; line-height: 1.95; font-size: 16px; overflow-wrap: anywhere; }
+  .desc.clamp { max-height: 420px; overflow: hidden; position: relative; }
+  .desc.clamp::after { content: ""; position: absolute; inset: auto 0 0 0; height: 80px; background: linear-gradient(transparent, var(--card)); }
+  .toggle-desc { margin-top: 12px; font: inherit; font-weight: 600; color: var(--teal-strong); background: none; border: 0; cursor: pointer; padding: 8px 0; min-height: 44px; }
+  .no-desc { color: var(--ink-muted); line-height: 1.8; }
+  .skills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .skills a { background: var(--teal-bg); color: #0B5F59; border-radius: 999px; padding: 7px 14px; text-decoration: none; font-size: 14px; }
+  .skills a:hover { background: #D3EDE9; }
+  .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 16px; margin: 0; font-size: 15px; }
+  .facts dt { color: var(--ink-muted); }
+  .facts dd { margin: 0; font-weight: 600; }
+  .cmp-big { font-family: var(--font-head); font-size: 26px; line-height: 1.5; }
+  .cmp-big.up { color: var(--teal-strong); }
+  .cmp-big.down { color: #A04A2C; }
+  .cmp-text { margin: 6px 0 16px; color: var(--ink-muted); line-height: 1.8; font-size: 15px; }
+  .range { position: relative; height: 10px; background: #EEF2F3; border-radius: 99px; margin: 28px 0 8px; direction: ltr; }
+  .range .band-iqr { position: absolute; top: 0; bottom: 0; background: #BFE3DD; border-radius: 99px; }
+  .range .mark { position: absolute; top: -8px; width: 4px; height: 26px; background: var(--navy); border-radius: 2px; transform: translateX(-2px); }
+  .range .mark span { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12px; font-weight: 700; background: var(--navy); color: #fff; padding: 2px 8px; border-radius: 6px; }
+  .range-labels { display: flex; justify-content: space-between; direction: ltr; font-size: 12px; color: var(--ink-muted); }
+  .link { color: var(--teal-strong); font-weight: 600; text-decoration: none; display: inline-block; margin-top: 12px; }
+  .similar { display: flex; flex-direction: column; gap: 10px; }
+  .similar a { display: flex; justify-content: space-between; gap: 12px; text-decoration: none; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .similar a:hover { border-color: var(--teal-strong); }
+  .similar .s-sub { color: var(--ink-muted); font-size: 14px; margin-top: 2px; }
+  .similar .s-when { color: var(--ink-muted); font-size: 13px; white-space: nowrap; }
+  .state { text-align: center; padding: 80px 20px; }
+  .state h1 { color: var(--ink); font-size: 26px; }
+  .state p { color: var(--ink-muted); }
+  [hidden] { display: none !important; }
+  @media (max-width: 760px) {
+    h1 { font-size: 24px; }
+    .initial { width: 52px; height: 52px; font-size: 21px; }
+    .apply-big { width: 100%; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="site-logo" href="./" aria-label="مسار — الصفحة الرئيسية"><img src="./assets/logo-light.svg" alt="Masar"></a>
+    <nav class="site-nav" aria-label="القائمة">
+      <a href="./" data-i18n="nav_jobs">الوظائف</a>
+      <a href="./dashboard.html" data-i18n="nav_dash">لوحة السوق</a>
+      <a href="./insights.html" data-i18n="nav_insights">تحليل التخصصات</a>
+    </nav>
+    <button type="button" class="lang-btn" id="langBtn" lang="en">EN</button>
+  </div>
+</header>
+
+<main id="page">
+  <div class="wrap state" id="loading"><p data-i18n="loading">جاري التحميل...</p></div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <img src="./assets/logo-light.svg" alt="Masar">
+    <div class="fine"><span data-i18n="footer">التقديم يتم على موقع الإعلان الأصلي · البيانات تُحدّث يوميًا</span></div>
+  </div>
+</footer>
+
+<script>
+const NUM = "en-US";
+const EMPTY = new Set(["", "unknown", "not specified", "n/a", "na", "none", "null", "nan", "-"]);
+const CITY_AR = {
+  "Riyadh": "الرياض", "Jeddah": "جدة", "Makkah": "مكة المكرمة", "Medina": "المدينة المنورة",
+  "Dammam": "الدمام", "Khobar": "الخبر", "Dhahran": "الظهران", "Jubail": "الجبيل", "Taif": "الطائف",
+  "Tabuk": "تبوك", "Abha": "أبها", "Khamis Mushait": "خميس مشيط", "Buraydah": "بريدة", "Unaizah": "عنيزة",
+  "Qassim": "القصيم", "Hail": "حائل", "Jizan": "جازان", "Najran": "نجران", "Al Ahsa": "الأحساء",
+  "Al Hofuf": "الهفوف", "Qatif": "القطيف", "Yanbu": "ينبع", "Al Kharj": "الخرج", "Al Bahah": "الباحة",
+  "Sakaka": "سكاكا", "Arar": "عرعر", "Hafar Al-Batin": "حفر الباطن", "Eastern Province": "المنطقة الشرقية",
+  "Al Ula": "العلا", "Rabigh": "رابغ", "Sabya": "صبيا", "NEOM": "نيوم", "Unknown": "غير محدد",
+};
+const MODE_AR = { "Remote": "عن بُعد", "Hybrid": "هجين", "On-site": "حضوري", "Field": "ميداني" };
+const TYPE_AR = { "Full-time": "دوام كامل", "Part-time": "دوام جزئي", "Contract": "عقد", "Temporary": "مؤقت", "Internship": "تدريب", "Freelance": "عمل حر" };
+const QUAL_AR = { "Bachelor's Degree": "بكالوريوس", "Master's Degree / PhD": "ماجستير / دكتوراه", "Diploma": "دبلوم", "High School": "ثانوية" };
+
+const I18N = {
+  ar: {
+    nav_jobs: "الوظائف", nav_dash: "لوحة السوق", nav_insights: "تحليل التخصصات",
+    loading: "جاري التحميل...", footer: "التقديم يتم على موقع الإعلان الأصلي · البيانات تُحدّث يوميًا",
+    home: "الوظائف", apply: "قدّم الآن", apply_note: "التقديم على موقع الإعلان الأصلي",
+    desc: "وصف الوظيفة", more: "اقرأ الوصف كامل", less: "أخفِ", no_desc: "ما وصلنا وصف لهذي الوظيفة. افتح الإعلان الأصلي للتفاصيل.",
+    skills: "المهارات المطلوبة", facts: "ملخص الوظيفة",
+    f_city: "المدينة", f_mode: "طبيعة العمل", f_type: "نوع الدوام", f_exp: "الخبرة", f_qual: "المؤهل", f_salary: "الراتب", f_posted: "نُشرت", f_field: "التخصص",
+    years: "سنوات", sar: "ريال",
+    cmp_title: "الراتب مقارنة بالسوق",
+    cmp_up: p => `أعلى بـ ${p}%`, cmp_down: p => `أقل بـ ${p}%`, cmp_same: "قريب من المتوسط",
+    cmp_text: (who, m, n) => `مقارنة بمتوسط رواتب ${who} (${m} ريال، من ${n} إعلان فيه راتب).`,
+    cmp_title_who: t => `«${t}»`, cmp_field_who: f => `تخصص ${f}`,
+    cmp_none: "هذي الوظيفة ما فيها راتب معلن.", cmp_market: (f, m, a, b) => `متوسط الرواتب في ${f}: ${m} ريال، وغالبها بين ${a} و ${b} ريال.`,
+    range_you: "هذي الوظيفة",
+    field_go: f => `كل تحليل ${f} ←`,
+    similar: "وظائف مشابهة",
+    gone_title: "هذي الوظيفة ما عادت موجودة", gone_text: "يمكن انتهى التقديم عليها أو انحذفت. شوف الوظائف المفتوحة الحين.", back: "رجوع للوظائف",
+    error: "ما قدرنا نحمّل الوظيفة. حدّث الصفحة بعد شوي.",
+    today: "اليوم", yesterday: "أمس", days: n => `قبل ${n} يوم`,
+    switch_label: "EN", switch_aria: "Switch to English", date_locale: "ar-SA-u-nu-latn-ca-gregory",
+  },
+  en: {
+    nav_jobs: "Jobs", nav_dash: "Market dashboard", nav_insights: "Field insights",
+    loading: "Loading...", footer: "Applications happen on the original posting · Data refreshed daily",
+    home: "Jobs", apply: "Apply now", apply_note: "You apply on the original posting",
+    desc: "Job description", more: "Read the full description", less: "Show less", no_desc: "We didn't get a description for this job. Open the original posting for details.",
+    skills: "Skills asked for", facts: "Job summary",
+    f_city: "City", f_mode: "Work mode", f_type: "Employment type", f_exp: "Experience", f_qual: "Education", f_salary: "Salary", f_posted: "Posted", f_field: "Field",
+    years: "years", sar: "SAR",
+    cmp_title: "Salary vs. the market",
+    cmp_up: p => `${p}% higher`, cmp_down: p => `${p}% lower`, cmp_same: "Close to the median",
+    cmp_text: (who, m, n) => `Compared with the median for ${who} (${m} SAR, from ${n} postings with a salary).`,
+    cmp_title_who: t => `"${t}"`, cmp_field_who: f => `${f}`,
+    cmp_none: "This job doesn't list a salary.", cmp_market: (f, m, a, b) => `Median salary in ${f}: ${m} SAR; most fall between ${a} and ${b} SAR.`,
+    range_you: "This job",
+    field_go: f => `All ${f} insights →`,
+    similar: "Similar jobs",
+    gone_title: "This job is no longer listed", gone_text: "It may have closed or been removed. See the jobs that are open now.", back: "Back to jobs",
+    error: "We couldn't load this job. Please refresh in a moment.",
+    today: "Today", yesterday: "Yesterday", days: n => `${n} days ago`,
+    switch_label: "عربي", switch_aria: "التبديل إلى العربية", date_locale: "en-GB",
+  },
+};
+let LANG = "ar";
+try {
+  const q = new URLSearchParams(location.search).get("lang");
+  const saved = localStorage.getItem("masar_lang");
+  if (q === "en" || q === "ar") LANG = q; else if (saved === "en" || saved === "ar") LANG = saved;
+} catch (e) {}
+const T = (k, ...a) => { const v = I18N[LANG][k]; return typeof v === "function" ? v(...a) : v; };
+const isAr = () => LANG === "ar";
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString(NUM);
+const has = v => v !== null && v !== undefined && !EMPTY.has(String(v).trim().toLowerCase());
+const esc = s => s == null ? "" : String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+function safeUrl(u) { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : "#"; } catch { return "#"; } }
+const lab = (map, v) => isAr() ? (map[v] || v) : v;
+function niceTitle(t) {
+  if (!t) return "";
+  const letters = t.replace(/[^A-Za-z]/g, "");
+  return letters.length > 4 && letters === letters.toUpperCase() ? t.toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase()) : t;
+}
+function parseDate(v) { const s = String(v || ""); return /^\d{8}$/.test(s) ? new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T00:00:00`) : null; }
+function rel(v) {
+  const d = parseDate(v); if (!d) return "";
+  const t = new Date(); t.setHours(0,0,0,0);
+  const n = Math.round((t - d) / 864e5);
+  return n <= 0 ? T("today") : n === 1 ? T("yesterday") : n < 30 ? T("days", fmt(n)) : d.toLocaleDateString(T("date_locale"), { day: "numeric", month: "long", year: "numeric" });
+}
+const initialOf = j => (has(j.company_name) ? j.company_name : j.job_title || "؟").replace(/^(شركة|مؤسسة|مكتب)\s+/, "").trim().charAt(0).toUpperCase();
+function salaryOf(j) {
+  if (j.salary_min) {
+    const a = fmt(Math.round(j.salary_min)), b = j.salary_max && j.salary_max > j.salary_min ? fmt(Math.round(j.salary_max)) : null;
+    return `${b ? a + " – " + b : a} ${j.salary_currency && j.salary_currency !== "SAR" ? j.salary_currency : T("sar")}`;
+  }
+  return has(j.salary) ? j.salary : "";
+}
+
+const ID = new URLSearchParams(location.search).get("id") || "";
+let JOB = null, FIELDS = null, SIMILAR = null;
+
+function applyStaticText() {
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = isAr() ? "rtl" : "ltr";
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.dataset.i18n); });
+  const b = $("langBtn"); b.textContent = T("switch_label"); b.setAttribute("aria-label", T("switch_aria")); b.lang = isAr() ? "en" : "ar";
+}
+
+function fieldOf() { return FIELDS && JOB ? (FIELDS.fields || []).find(f => f.id === JOB.job_field) : null; }
+const fieldName = f => f ? (isAr() ? f.name_ar : f.name_en) : "";
+
+function compareHtml() {
+  const f = fieldOf();
+  // Compare with the same title when its salaries vary enough to mean something, else with the field.
+  const prof = FIELDS && (FIELDS.titles || []).find(t => t.title === JOB.job_title && t.salary && t.salary.p75 > t.salary.p25);
+  const ref = prof ? prof.salary : f && f.salary;
+  if (!ref) return "";
+  const who = prof ? T("cmp_title_who", niceTitle(JOB.job_title)) : T("cmp_field_who", fieldName(f));
+  const mine = JOB.salary_currency && JOB.salary_currency !== "SAR" ? null : JOB.salary_min;
+  if (!mine) {
+    return `<section class="card"><h2>${T("cmp_title")}</h2><p class="cmp-text">${T("cmp_none")} ${f && f.salary ? T("cmp_market", fieldName(f), fmt(f.salary.median), fmt(f.salary.p25), fmt(f.salary.p75)) : ""}</p></section>`;
+  }
+  const diff = Math.round(100 * (mine - ref.median) / ref.median);
+  const big = Math.abs(diff) < 5 ? `<div class="cmp-big">${T("cmp_same")}</div>`
+    : `<div class="cmp-big ${diff > 0 ? "up" : "down"}">${diff > 0 ? T("cmp_up", fmt(diff)) : T("cmp_down", fmt(-diff))}</div>`;
+  // Scale: from half the 25th percentile to 1.5x the 75th, so the IQR band sits in the middle.
+  const lo = Math.min(ref.p25 * 0.5, mine * 0.9), hi = Math.max(ref.p75 * 1.5, mine * 1.1);
+  const pos = v => `${Math.min(100, Math.max(0, 100 * (v - lo) / (hi - lo)))}%`;
+  return `<section class="card"><h2>${T("cmp_title")}</h2>${big}
+    <p class="cmp-text">${T("cmp_text", esc(who), fmt(ref.median), fmt(ref.sample))}</p>
+    ${ref.p75 > ref.p25 ? `<div class="range" aria-hidden="true">
+      <div class="band-iqr" style="left:${pos(ref.p25)};right:calc(100% - ${pos(ref.p75)})"></div>
+      <div class="mark" style="left:${pos(mine)}"><span>${T("range_you")}</span></div>
+    </div>
+    <div class="range-labels"><span>${fmt(ref.p25)}</span><span>${fmt(ref.median)}</span><span>${fmt(ref.p75)}</span></div>` : ""}
+  </section>`;
+}
+
+function render() {
+  const j = JOB, f = fieldOf();
+  document.title = `${niceTitle(j.job_title)} — ${has(j.company_name) ? j.company_name + " — " : ""}مسار`;
+  const meta = document.querySelector('meta[name="description"]');
+  meta.content = `${niceTitle(j.job_title)}${has(j.company_name) ? " · " + j.company_name : ""}${has(j.city) ? " · " + lab(CITY_AR, j.city) : ""}`;
+  const apply = safeUrl(j.apply_url || j.job_url);
+  const sal = salaryOf(j);
+  const tags = [
+    has(j.work_mode) && lab(MODE_AR, j.work_mode), has(j.employment_type) && lab(TYPE_AR, j.employment_type),
+    has(j.experience_needed) && `${isAr() ? "خبرة" : "Experience"}: ${j.experience_needed}`,
+  ].filter(Boolean).map(t => `<span class="tag"><bdi>${esc(t)}</bdi></span>`);
+  if (sal) tags.push(`<span class="tag salary"><bdi>${esc(sal)}</bdi></span>`);
+  const facts = [
+    [T("f_city"), has(j.city) && lab(CITY_AR, j.city)], [T("f_mode"), has(j.work_mode) && lab(MODE_AR, j.work_mode)],
+    [T("f_type"), has(j.employment_type) && lab(TYPE_AR, j.employment_type)],
+    [T("f_exp"), has(j.experience_needed) && `${j.experience_needed} ${T("years")}`],
+    [T("f_qual"), has(j.qualification_required) && lab(QUAL_AR, j.qualification_required)],
+    [T("f_salary"), sal], [T("f_field"), f && fieldName(f)], [T("f_posted"), rel(j.posted_date_key)],
+  ].filter(x => x[1]);
+  const skills = (j.skills || []).map(s => `<a href="./insights.html${j.job_field ? "#" + encodeURIComponent(j.job_field) : ""}"><bdi>${esc(s)}</bdi></a>`).join("");
+  const desc = has(j.description) ? j.description : "";
+
+  $("page").innerHTML = `
+  <section class="band"><div class="wrap">
+    <nav class="crumbs" aria-label="breadcrumb"><a href="./">${T("home")}</a><span aria-hidden="true">/</span>${f ? `<a href="./insights.html#${encodeURIComponent(f.id)}">${esc(fieldName(f))}</a>` : ""}</nav>
+    <div class="title-row">
+      <div class="initial" aria-hidden="true">${esc(initialOf(j))}</div>
+      <div class="title-text">
+        <h1><bdi>${esc(niceTitle(j.job_title))}</bdi></h1>
+        <div class="company"><bdi>${esc(has(j.company_name) ? j.company_name : "")}</bdi>${has(j.city) ? " · " + esc(lab(CITY_AR, j.city)) : ""}</div>
+      </div>
+      <a class="apply-big" href="${esc(apply)}" target="_blank" rel="noopener">${T("apply")}</a>
+    </div>
+    ${tags.length ? `<div class="tags">${tags.join("")}</div>` : ""}
+  </div></section>
+  <div class="wrap layout">
+    <div class="content">
+      <section class="card"><h2>${T("desc")}</h2>
+        ${desc ? `<div class="desc ${desc.length > 1400 ? "clamp" : ""}" id="desc"><bdi>${esc(desc)}</bdi></div>
+                  ${desc.length > 1400 ? `<button type="button" class="toggle-desc" id="descBtn" aria-expanded="false">${T("more")}</button>` : ""}`
+               : `<p class="no-desc">${T("no_desc")}</p>`}
+      </section>
+      ${skills ? `<section class="card"><h2>${T("skills")}</h2><div class="skills">${skills}</div></section>` : ""}
+      <section class="card" id="similarCard" hidden><h2>${T("similar")}</h2><div class="similar" id="similar"></div></section>
+    </div>
+    <aside class="aside">
+      <section class="card"><h2>${T("facts")}</h2>
+        <dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd><bdi>${esc(v)}</bdi></dd>`).join("")}</dl>
+        <a class="apply-big" style="width:100%;margin-top:20px" href="${esc(apply)}" target="_blank" rel="noopener">${T("apply")}</a>
+        <p class="cmp-text" style="margin:10px 0 0;text-align:center;font-size:13px">${T("apply_note")}</p>
+      </section>
+      ${compareHtml()}
+      ${f ? `<a class="link" href="./insights.html#${encodeURIComponent(f.id)}">${T("field_go", esc(fieldName(f)))}</a>` : ""}
+    </aside>
+  </div>`;
+  const btn = $("descBtn");
+  if (btn) btn.addEventListener("click", () => {
+    const open = $("desc").classList.toggle("clamp") === false;
+    btn.textContent = open ? T("less") : T("more");
+    btn.setAttribute("aria-expanded", String(open));
+  });
+  if (SIMILAR) renderSimilar();
+}
+
+function renderSimilar() {
+  const j = JOB;
+  const score = x => (x.job_title === j.job_title ? 4 : 0) + (x.job_field === j.job_field ? 1 : 0) + (x.city === j.city ? 1 : 0) + (x.company_name === j.company_name ? 1 : 0);
+  const list = SIMILAR.filter(x => x.job_id !== j.job_id && (x.job_title === j.job_title || (x.job_field === j.job_field && j.job_field !== "other")))
+    .map(x => [score(x), x]).sort((a, b) => b[0] - a[0] || String(b[1].posted_date_key).localeCompare(String(a[1].posted_date_key)))
+    .slice(0, 6).map(x => x[1]);
+  if (!list.length) return;
+  $("similar").innerHTML = list.map(x => `<a href="./job.html?id=${encodeURIComponent(x.job_id)}">
+    <span><b><bdi>${esc(niceTitle(x.job_title))}</bdi></b><div class="s-sub"><bdi>${esc(has(x.company_name) ? x.company_name : "")}</bdi>${has(x.city) ? " · " + esc(lab(CITY_AR, x.city)) : ""}</div></span>
+    <span class="s-when">${rel(x.posted_date_key)}</span></a>`).join("");
+  $("similarCard").hidden = false;
+}
+
+function showState(title, text) {
+  $("page").innerHTML = `<div class="wrap state"><h1>${title}</h1><p>${text}</p><a class="apply-big" href="./">${T("back")}</a></div>`;
+}
+
+async function load() {
+  if (!/^[0-9a-f]{6,40}$/.test(ID)) { showState(T("gone_title"), T("gone_text")); return; }
+  try {
+    const [shard, fields] = await Promise.all([
+      fetch(`./details/${ID.slice(0, 2)}.json`, { cache: "no-cache" }).then(r => r.ok ? r.json() : {}),
+      fetch("./fields.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    FIELDS = fields;
+    JOB = shard[ID];
+    if (!JOB) { showState(T("gone_title"), T("gone_text")); return; }
+    render();
+    // Similar jobs need the full list; it is usually cached from the jobs page.
+    fetch("./jobs.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { SIMILAR = d; renderSimilar(); } }).catch(() => {});
+  } catch (e) {
+    showState(T("error"), "");
+  }
+}
+
+$("langBtn").addEventListener("click", () => {
+  LANG = isAr() ? "en" : "ar";
+  try { localStorage.setItem("masar_lang", LANG); } catch (e) {}
+  applyStaticText();
+  if (JOB) render(); else if (!$("loading")) load();
+});
+applyStaticText();
+load();
+</script>
+</body>
+</html>
