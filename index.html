@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مسار — كل وظائف السعودية في مسار واحد</title>
+<meta name="description" content="مسار يجمع الوظائف في السعودية يوميًا من مواقع التوظيف وصفحات الشركات، ويوضح لك وش يطلب السوق في تخصصك.">
+<meta name="theme-color" content="#0F2A3D">
+<link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/site.css">
+<style>
+  /* ---------- Hero ---------- */
+  .hero { background: var(--navy); color: var(--on-navy); position: relative; overflow: hidden; }
+  .hero .route { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; pointer-events: none; }
+  .hero .wrap { position: relative; padding-top: 56px; padding-bottom: 104px; }
+  .hero-inner { max-width: 760px; }
+  .kicker { margin: 0 0 14px; color: var(--gold); font-weight: 600; font-size: 15px; min-height: 1.5em; }
+  h1 { margin: 0; font-family: var(--font-head); font-weight: 800; font-size: 52px; line-height: 1.35; text-wrap: balance; }
+  .hero-sub { margin: 18px 0 0; font-size: 19px; line-height: 1.8; color: var(--on-navy-muted); max-width: 640px; }
+  .search-form { margin-top: 32px; display: flex; gap: 8px; background: var(--card); border-radius: 16px; padding: 8px; flex-wrap: wrap; }
+  .search-form label { display: flex; flex-direction: column; padding: 6px 14px; min-width: 0; }
+  .search-form .f-q { flex: 1 1 280px; }
+  .search-form .f-city { flex: 0 1 220px; border-inline-start: 1px solid var(--line); }
+  .search-form span { font-size: 12px; color: var(--ink-muted); font-weight: 600; }
+  .search-form input, .search-form select {
+    font: inherit; font-size: 17px; border: 0; outline: none; padding: 4px 0; color: var(--ink); background: transparent; width: 100%;
+  }
+  .search-form button {
+    font: inherit; font-size: 17px; font-weight: 700; color: #fff; background: var(--teal-strong); border: 0;
+    border-radius: 12px; padding: 0 30px; min-height: 56px; cursor: pointer;
+  }
+  .search-form button:hover { background: var(--teal); }
+  .quick { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; align-items: center; font-size: 14px; }
+  .quick .t { color: #9DB0BC; }
+  .quick button {
+    font: inherit; font-size: 14px; color: #fff; background: transparent; cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; padding: 6px 14px; min-height: 36px;
+  }
+  .quick button:hover { background: rgba(255,255,255,0.08); }
+  .updated { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; font-size: 13px; color: var(--on-navy-muted); }
+  .updated .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+  .updated[hidden] { display: none; }
+
+  /* ---------- Stats strip ---------- */
+  .stats-wrap { margin-top: -44px; position: relative; z-index: 2; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--card); border-radius: 18px; box-shadow: 0 12px 32px rgba(15,42,61,0.10); }
+  .stat { padding: 22px 26px; }
+  .stat + .stat { border-inline-start: 1px solid var(--line); }
+  .stat b { display: block; font-family: var(--font-head); font-size: 30px; line-height: 1.5; }
+  .stat:first-child b { color: var(--teal-strong); }
+  .stat span { color: var(--ink-muted); font-size: 15px; }
+
+  /* ---------- Main ---------- */
+  .main { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; padding-top: 56px; }
+  .jobs-col { flex: 999 1 640px; min-width: 0; }
+  .side-col { flex: 1 1 300px; display: flex; flex-direction: column; gap: 16px; }
+  .head-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h2 { margin: 0; font-family: var(--font-head); font-size: 26px; line-height: 1.5; }
+  .muted { color: var(--ink-muted); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+  .filters select {
+    font: inherit; font-size: 14px; color: var(--ink); background: var(--card); border: 1px solid var(--line-strong);
+    border-radius: 999px; padding: 0 14px; min-height: 40px; cursor: pointer;
+  }
+  .filters select[hidden], .pill-toggle[hidden] { display: none; }
+  .pill-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; background: var(--card); border: 1px solid var(--line-strong); border-radius: 999px; padding: 0 14px; min-height: 40px; cursor: pointer; }
+  .pill-toggle input { accent-color: var(--teal-strong); width: 16px; height: 16px; margin: 0; }
+  .reset-btn { font: inherit; font-size: 14px; color: var(--teal-strong); background: none; border: 0; cursor: pointer; text-decoration: underline; padding: 8px 4px; }
+  .reset-btn[hidden] { display: none; }
+  .results-meta { margin: 14px 0 0; font-size: 14px; color: var(--ink-muted); }
+
+  .list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+  .job {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px;
+    display: flex; gap: 18px; align-items: center; flex-wrap: wrap; position: relative;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .job:hover { border-color: var(--line-strong); box-shadow: 0 6px 20px rgba(15,42,61,0.07); }
+  .initial {
+    width: 52px; height: 52px; border-radius: 14px; background: var(--teal-bg); color: var(--teal-strong);
+    display: grid; place-items: center; font-family: var(--font-head); font-weight: 800; font-size: 20px; flex-shrink: 0;
+  }
+  .job-body { flex: 1 1 260px; min-width: 0; }
+  .job h3 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.5; }
+  .job h3 a { color: var(--ink); text-decoration: none; }
+  .job h3 a::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }  /* whole card opens the job page */
+  .job h3 a:hover { color: var(--teal-strong); }
+  .job .sub { margin-top: 4px; color: var(--ink-muted); font-size: 15px; }
+  .tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; font-size: 13px; }
+  .tag { background: #F1F4F5; border-radius: 8px; padding: 4px 10px; }
+  .tag.salary { background: var(--gold-bg); color: var(--gold-text); font-weight: 600; }
+  .job-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; position: relative; z-index: 1; }
+  .when { font-size: 13px; color: var(--ink-muted); }
+  .apply {
+    background: var(--navy); color: #fff; text-decoration: none; border-radius: 10px; padding: 0 18px; min-height: 44px;
+    display: inline-flex; align-items: center; font-weight: 600; font-size: 15px; white-space: nowrap;
+  }
+  .apply:hover { background: var(--navy-2); }
+  .more-wrap { display: flex; justify-content: center; margin-top: 22px; }
+  .more-wrap[hidden] { display: none; }
+  .more-btn { font: inherit; font-weight: 600; font-size: 15px; color: var(--ink); background: var(--card); border: 1px solid var(--line-strong); border-radius: 12px; padding: 0 24px; min-height: 46px; cursor: pointer; }
+  .more-btn:hover { border-color: var(--teal-strong); color: var(--teal-strong); }
+  .empty, .loading { text-align: center; padding: 64px 20px; color: var(--ink-muted); background: var(--card); border-radius: 16px; border: 1px solid var(--line); }
+
+  /* ---------- Side cards ---------- */
+  .card-navy { background: var(--navy); color: #fff; border-radius: 18px; padding: 24px; }
+  .card-navy h2, .card-plain h2 { font-size: 20px; }
+  .card-navy p { margin: 4px 0 18px; color: var(--on-navy-muted); font-size: 14px; }
+  .fbars { display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
+  .fbar a { color: #fff; text-decoration: none; display: flex; justify-content: space-between; gap: 8px; }
+  .fbar a:hover { color: var(--gold); }
+  .fbar .n { color: var(--on-navy-muted); }
+  .fbar .track { height: 8px; background: rgba(255,255,255,0.12); border-radius: 99px; margin-top: 6px; }
+  .fbar .fill { height: 8px; background: var(--teal); border-radius: 99px; }
+  .card-navy .go { display: inline-block; margin-top: 20px; color: var(--gold); font-weight: 600; text-decoration: none; }
+  .card-plain { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+  .card-plain p { margin: 6px 0 14px; color: var(--ink-muted); font-size: 14px; line-height: 1.7; }
+  .skills { display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; }
+  .skills span { background: var(--teal-bg); color: #0B5F59; border-radius: 999px; padding: 6px 12px; }
+  .card-plain .go { display: inline-block; margin-top: 16px; color: var(--teal-strong); font-weight: 600; text-decoration: none; }
+
+  /* ---------- Team ---------- */
+  .team { padding-top: 64px; }
+  .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 18px; }
+  .member { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--navy); color: var(--gold); display: grid; place-items: center; font-family: var(--font-head); font-weight: 800; font-size: 20px; }
+  .member h3 { margin: 0; font-size: 16px; }
+  .member-links { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .member-links a { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; min-height: 40px; border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; color: var(--teal-strong); border: 1px solid var(--line-strong); }
+  .member-links a:hover { border-color: var(--teal-strong); }
+
+  @media (max-width: 760px) {
+    .hero .wrap { padding-top: 32px; padding-bottom: 88px; }
+    h1 { font-size: 32px; }
+    .hero-sub { font-size: 16px; }
+    .search-form .f-city { border-inline-start: 0; border-top: 1px solid var(--line); flex: 1 1 100%; }
+    .search-form button { flex: 1 1 100%; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat { padding: 16px 18px; }
+    .stat:nth-child(3) { border-inline-start: 0; }
+    .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .stat b { font-size: 24px; }
+    .main { padding-top: 36px; }
+    .job { padding: 16px; gap: 12px; }
+    .initial { width: 44px; height: 44px; font-size: 17px; }
+    .job-side { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="site-logo" href="./" aria-label="مسار — الصفحة الرئيسية"><img src="./assets/logo-light.svg" alt="Masar"></a>
+    <nav class="site-nav" aria-label="القائمة">
+      <a href="./" aria-current="page" data-i18n="nav_jobs">الوظائف</a>
+      <a href="./dashboard.html" data-i18n="nav_dash">لوحة السوق</a>
+      <a href="./insights.html" data-i18n="nav_insights">تحليل التخصصات</a>
+      <a href="#team" data-i18n="nav_team">الفريق</a>
+    </nav>
+    <button type="button" class="lang-btn" id="langBtn" lang="en">EN</button>
+  </div>
+</header>
+
+<section class="hero">
+  <svg class="route" aria-hidden="true" viewBox="0 0 1440 560" preserveAspectRatio="none">
+    <path d="M-20 470 C 220 420, 300 300, 520 320 S 860 470, 1040 330 S 1300 120, 1460 160" fill="none" stroke="#13A39A" stroke-width="3" stroke-dasharray="2 14" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="520" cy="320" r="7" fill="#F0B35F"/><circle cx="1040" cy="330" r="7" fill="#13A39A"/><circle cx="1300" cy="170" r="7" fill="#F0B35F"/>
+  </svg>
+  <div class="wrap">
+    <div class="hero-inner">
+      <p class="kicker" id="kicker"></p>
+      <h1 data-i18n="hero_title">كل وظائف السعودية في مسار واحد</h1>
+      <p class="hero-sub" data-i18n="hero_sub">نجمع الوظائف من مواقع التوظيف وصفحات الشركات، ونوضح لك وش يطلب السوق في تخصصك.</p>
+      <form class="search-form" id="searchForm" role="search">
+        <label class="f-q"><span data-i18n="q_label">المسمى أو الشركة</span>
+          <input type="search" id="search" autocomplete="off" data-i18n-ph="search_ph" placeholder="مثال: محاسب، Data Analyst">
+        </label>
+        <label class="f-city"><span data-i18n="city_label">المدينة</span>
+          <select id="cityFilter"><option value="">كل المدن</option></select>
+        </label>
+        <button type="submit" data-i18n="search_btn">ابحث</button>
+      </form>
+      <div class="quick" id="quick" hidden></div>
+      <div class="updated" id="updated" hidden><span class="dot" aria-hidden="true"></span><span id="updatedText"></span></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap stats-wrap">
+  <div class="stats">
+    <div class="stat"><b id="statTotal">—</b><span data-i18n="stat_jobs">وظيفة مفتوحة</span></div>
+    <div class="stat"><b id="statCompanies">—</b><span data-i18n="stat_companies">شركة توظف</span></div>
+    <div class="stat"><b id="statCities">—</b><span data-i18n="stat_cities">مدينة</span></div>
+    <div class="stat"><b id="statNew">—</b><span data-i18n="stat_new">جديدة هذا الأسبوع</span></div>
+  </div>
+</div>
+
+<div class="wrap main" id="jobs">
+  <section class="jobs-col" aria-labelledby="jobsTitle">
+    <div class="head-row">
+      <h2 id="jobsTitle" data-i18n="jobs_title">أحدث الوظائف</h2>
+      <span class="muted" data-i18n="jobs_sub">مرتبة من الأحدث</span>
+    </div>
+    <div class="filters">
+      <select id="modeFilter" aria-label="طبيعة العمل" data-i18n-aria="mode_aria" hidden><option value="">كل طرق العمل</option></select>
+      <select id="typeFilter" aria-label="نوع الدوام" data-i18n-aria="type_aria" hidden><option value="">كل أنواع الدوام</option></select>
+      <label class="pill-toggle" id="salaryToggle" hidden><input type="checkbox" id="salaryOnly"> <span data-i18n="salary_only">الراتب معلن</span></label>
+      <button class="reset-btn" id="resetBtn" type="button" hidden data-i18n="reset">مسح الفلاتر</button>
+    </div>
+    <p class="results-meta" id="stats" aria-live="polite"></p>
+    <div id="results"><div class="loading" data-i18n="loading">جاري تحميل الوظائف...</div></div>
+    <div class="more-wrap" id="moreWrap" hidden><button class="more-btn" id="moreBtn" type="button">عرض المزيد</button></div>
+  </section>
+
+  <aside class="side-col">
+    <div class="card-navy" id="marketCard" hidden>
+      <h2 data-i18n="market_title">السوق اليوم</h2>
+      <p data-i18n="market_sub">أكثر التخصصات طلبًا</p>
+      <div class="fbars" id="fieldBars"></div>
+      <a class="go" href="./dashboard.html" data-i18n="market_go">افتح لوحة السوق ←</a>
+    </div>
+    <div class="card-plain" id="skillsCard" hidden>
+      <h2 data-i18n="skills_title">وش يطلب السوق في تخصصك؟</h2>
+      <p data-i18n="skills_sub">أكثر المهارات طلبًا في كل الوظائف. اختر تخصصك وشوف مهاراته وشركاته ورواتبه.</p>
+      <div class="skills" id="skillList"></div>
+      <a class="go" href="./insights.html" data-i18n="skills_go">تحليل التخصصات ←</a>
+    </div>
+  </aside>
+</div>
+
+<section id="team" class="wrap team">
+  <h2 data-i18n="team_title">فريق العمل</h2>
+  <p class="muted" data-i18n="team_sub">الفريق الذي بنى مسار. تواصل معنا واطّلع على سيرنا الذاتية.</p>
+  <div class="team-grid">
+    <article class="member">
+      <div class="avatar" aria-hidden="true">AA</div>
+      <h3><bdi dir="ltr">Abdallah Almughamisi</bdi></h3>
+      <div class="member-links">
+        <a href="https://www.linkedin.com/in/abdallahalmughamisi" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://drive.google.com/drive/folders/1y5I1ekxGfvgvwhjjFUFVJAhw8VPSVgUg?usp=sharing" target="_blank" rel="noopener" data-i18n="cv">السيرة الذاتية</a>
+      </div>
+    </article>
+    <article class="member">
+      <div class="avatar" aria-hidden="true">DA</div>
+      <h3><bdi dir="ltr">Dhay Alharbi</bdi></h3>
+      <div class="member-links">
+        <a href="https://www.linkedin.com/in/dhay-alharbi" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://drive.google.com/drive/folders/1BOE8fltdaHVihdBxwbNqis4DVYSXaCkl?usp=sharing" target="_blank" rel="noopener" data-i18n="cv">السيرة الذاتية</a>
+      </div>
+    </article>
+    <article class="member">
+      <div class="avatar" aria-hidden="true">AA</div>
+      <h3><bdi dir="ltr">Abdulrahman Alguwaiz</bdi></h3>
+      <div class="member-links">
+        <a href="https://www.linkedin.com/in/abdulrahman-alguwaiz" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://drive.google.com/drive/folders/1fps3v1ppc8VXqvLrbvI-PmM0S1vk-VPD?usp=sharing" target="_blank" rel="noopener" data-i18n="cv">السيرة الذاتية</a>
+      </div>
+    </article>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <img src="./assets/logo-light.svg" alt="Masar">
+    <div class="fine">
+      <span data-i18n="footer1">مسار — مشروع تخرج في هندسة البيانات · الأكاديمية السعودية الرقمية × WeCloudData</span>
+      <span data-i18n="footer2">البيانات تُجمع من مصادر عامة وتُحدّث يوميًا · التقديم يتم على موقع الإعلان الأصلي</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const PAGE_SIZE = 40;
+const NUM = "en-US";                      // Latin digits everywhere
+const EMPTY = new Set(["", "unknown", "not specified", "n/a", "na", "none", "null", "nan", "-"]);
+
+const CITY_AR = {
+  "Riyadh": "الرياض", "Jeddah": "جدة", "Makkah": "مكة المكرمة", "Medina": "المدينة المنورة",
+  "Dammam": "الدمام", "Khobar": "الخبر", "Dhahran": "الظهران", "Jubail": "الجبيل", "Taif": "الطائف",
+  "Tabuk": "تبوك", "Abha": "أبها", "Khamis Mushait": "خميس مشيط", "Buraydah": "بريدة", "Unaizah": "عنيزة",
+  "Qassim": "القصيم", "Hail": "حائل", "Jizan": "جازان", "Najran": "نجران", "Al Ahsa": "الأحساء",
+  "Al Hofuf": "الهفوف", "Qatif": "القطيف", "Yanbu": "ينبع", "Al Kharj": "الخرج", "Al Bahah": "الباحة",
+  "Sakaka": "سكاكا", "Arar": "عرعر", "Hafar Al-Batin": "حفر الباطن", "Eastern Province": "المنطقة الشرقية",
+  "Al Ula": "العلا", "Rabigh": "رابغ", "Al Mubarraz": "المبرز", "Ras Tannurah": "رأس تنورة", "Sabya": "صبيا",
+  "King Abdullah Economic City": "مدينة الملك عبدالله الاقتصادية", "NEOM": "نيوم", "Unknown": "غير محدد",
+};
+const MODE_AR = { "Remote": "عن بُعد", "Hybrid": "هجين", "On-site": "حضوري", "Field": "ميداني" };
+const TYPE_AR = { "Full-time": "دوام كامل", "Part-time": "دوام جزئي", "Contract": "عقد", "Temporary": "مؤقت",
+                  "Internship": "تدريب", "Freelance": "عمل حر" };
+
+let allJobs = [], filtered = [], shown = 0, FIELDS = null;
+const $ = id => document.getElementById(id);
+
+const I18N = {
+  ar: {
+    page_title: "مسار — كل وظائف السعودية في مسار واحد",
+    nav_jobs: "الوظائف", nav_dash: "لوحة السوق", nav_insights: "تحليل التخصصات", nav_team: "الفريق",
+    kicker: n => `${n} وظيفة مفتوحة · تتحدث كل يوم`,
+    hero_title: "كل وظائف السعودية في مسار واحد",
+    hero_sub: "نجمع الوظائف من مواقع التوظيف وصفحات الشركات، ونوضح لك وش يطلب السوق في تخصصك.",
+    q_label: "المسمى أو الشركة", city_label: "المدينة", search_btn: "ابحث", search_ph: "مثال: محاسب، Data Analyst",
+    quick: "الأكثر طلبًا:",
+    updated: d => "آخر تحديث: " + d,
+    stat_jobs: "وظيفة مفتوحة", stat_companies: "شركة توظف", stat_cities: "مدينة", stat_new: "جديدة هذا الأسبوع",
+    jobs_title: "أحدث الوظائف", jobs_sub: "مرتبة من الأحدث",
+    mode_aria: "طبيعة العمل", type_aria: "نوع الدوام",
+    all_cities: "كل المدن", all_modes: "كل طرق العمل", all_types: "كل أنواع الدوام",
+    salary_only: "الراتب معلن", reset: "مسح الفلاتر", loading: "جاري تحميل الوظائف...",
+    results: n => `${n} وظيفة`, more: n => `عرض المزيد (${n})`, empty: "ما فيه وظائف تطابق بحثك. جرّب كلمة ثانية أو امسح الفلاتر.",
+    load_error: "ما قدرنا نحمّل الوظائف. حدّث الصفحة بعد شوي.",
+    no_title: "بدون عنوان", no_company: "شركة غير محددة", exp: "خبرة", apply: "قدّم على الوظيفة", sar: "ريال",
+    today: "اليوم", yesterday: "أمس", two_days: "قبل يومين", days_few: n => `قبل ${n} أيام`, days_many: n => `قبل ${n} يوم`,
+    market_title: "السوق اليوم", market_sub: "أكثر التخصصات طلبًا", market_go: "افتح لوحة السوق ←",
+    skills_title: "وش يطلب السوق في تخصصك؟", skills_sub: "أكثر المهارات طلبًا في كل الوظائف. اختر تخصصك وشوف مهاراته وشركاته ورواتبه.", skills_go: "تحليل التخصصات ←",
+    team_title: "فريق العمل", team_sub: "الفريق الذي بنى مسار. تواصل معنا واطّلع على سيرنا الذاتية.", cv: "السيرة الذاتية",
+    footer1: "مسار — مشروع تخرج في هندسة البيانات · الأكاديمية السعودية الرقمية × WeCloudData",
+    footer2: "البيانات تُجمع من مصادر عامة وتُحدّث يوميًا · التقديم يتم على موقع الإعلان الأصلي",
+    switch_label: "EN", switch_aria: "Switch to English", date_locale: "ar-SA-u-nu-latn-ca-gregory",
+  },
+  en: {
+    page_title: "Masar — Every job in Saudi Arabia, in one place",
+    nav_jobs: "Jobs", nav_dash: "Market dashboard", nav_insights: "Field insights", nav_team: "Team",
+    kicker: n => `${n} open jobs · updated daily`,
+    hero_title: "Every job in Saudi Arabia, in one place",
+    hero_sub: "We collect jobs from job sites and company career pages, and show you what the market wants in your field.",
+    q_label: "Title or company", city_label: "City", search_btn: "Search", search_ph: "e.g. Accountant, Data Analyst",
+    quick: "Most in demand:",
+    updated: d => "Last updated: " + d,
+    stat_jobs: "open jobs", stat_companies: "hiring companies", stat_cities: "cities", stat_new: "new this week",
+    jobs_title: "Latest jobs", jobs_sub: "Newest first",
+    mode_aria: "Work mode", type_aria: "Employment type",
+    all_cities: "All cities", all_modes: "All work modes", all_types: "All employment types",
+    salary_only: "Salary listed", reset: "Clear filters", loading: "Loading jobs...",
+    results: n => `${n} jobs`, more: n => `Show more (${n})`, empty: "No jobs match your search. Try another word or clear the filters.",
+    load_error: "We couldn't load the jobs. Please refresh in a moment.",
+    no_title: "Untitled", no_company: "Company not specified", exp: "Experience", apply: "Apply", sar: "SAR",
+    today: "Today", yesterday: "Yesterday", two_days: "2 days ago", days_few: n => `${n} days ago`, days_many: n => `${n} days ago`,
+    market_title: "The market today", market_sub: "Fields with the most jobs", market_go: "Open the market dashboard →",
+    skills_title: "What does the market want in your field?", skills_sub: "The most requested skills across all jobs. Pick your field to see its skills, companies and salaries.", skills_go: "Field insights →",
+    team_title: "Team", team_sub: "The team behind Masar. Get in touch and see our CVs.", cv: "CV",
+    footer1: "Masar — Data Engineering capstone · Saudi Digital Academy × WeCloudData",
+    footer2: "Data is collected from public sources and refreshed daily · Applications happen on the original job posting",
+    switch_label: "عربي", switch_aria: "التبديل إلى العربية", date_locale: "en-GB",
+  },
+};
+let LANG = "ar", LAST_MOD = null;
+try {
+  const q = new URLSearchParams(location.search).get("lang");
+  const saved = localStorage.getItem("masar_lang");
+  if (q === "en" || q === "ar") LANG = q; else if (saved === "en" || saved === "ar") LANG = saved;
+} catch (e) {}
+const T = (k, ...a) => { const v = I18N[LANG][k]; return typeof v === "function" ? v(...a) : v; };
+const isAr = () => LANG === "ar";
+
+function applyStaticText() {
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = isAr() ? "rtl" : "ltr";
+  document.title = T("page_title");
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = T(el.dataset.i18nPh); });
+  document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", T(el.dataset.i18nAria)); });
+  const b = $("langBtn");
+  b.textContent = T("switch_label"); b.setAttribute("aria-label", T("switch_aria")); b.lang = isAr() ? "en" : "ar";
+}
+function setLang(l) {
+  LANG = l;
+  try { localStorage.setItem("masar_lang", l); } catch (e) {}
+  applyStaticText();
+  if (allJobs.length) {
+    const keep = { city: $("cityFilter").value, mode: $("modeFilter").value, type: $("typeFilter").value };
+    populate(allJobs);
+    $("cityFilter").value = keep.city; $("modeFilter").value = keep.mode; $("typeFilter").value = keep.type;
+    renderPage(true);
+    if (LAST_MOD) renderUpdated();
+  }
+  if (FIELDS) renderSide();
+}
+
+const fmt = n => Number(n).toLocaleString(NUM);
+const has = v => v !== null && v !== undefined && !EMPTY.has(String(v).trim().toLowerCase());
+const cityLabel = c => isAr() ? (CITY_AR[c] || c) : c;
+const escapeHtml = s => s == null ? "" : String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+function safeUrl(u) { try { const url = new URL(u); return /^https?:$/.test(url.protocol) ? url.href : "#"; } catch { return "#"; } }
+function niceTitle(t) {
+  if (!t) return T("no_title");
+  const letters = t.replace(/[^A-Za-z]/g, "");
+  return letters.length > 4 && letters === letters.toUpperCase() ? t.toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase()) : t;
+}
+function parseDate(v) {
+  if (!v) return null;
+  const s = String(v);
+  const d = /^\d{8}$/.test(s) ? new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T00:00:00`) : new Date(s);
+  return isNaN(d) ? null : d;
+}
+function relativeDate(v) {
+  const d = parseDate(v);
+  if (!d) return "";
+  const today = new Date(); today.setHours(0,0,0,0);
+  const day = new Date(d); day.setHours(0,0,0,0);
+  const days = Math.round((today - day) / 86400000);
+  if (days <= 0) return T("today");
+  if (days === 1) return T("yesterday");
+  if (days === 2) return T("two_days");
+  if (days <= 10) return T("days_few", fmt(days));
+  if (days < 30) return T("days_many", fmt(days));
+  return d.toLocaleDateString(T("date_locale"), { day: "numeric", month: "long", year: "numeric" });
+}
+function salaryText(j) {
+  if (j.smin) {
+    const a = fmt(Math.round(j.smin)), b = j.smax && j.smax > j.smin ? fmt(Math.round(j.smax)) : null;
+    return `${b ? a + " – " + b : a} ${j.cur && j.cur !== "SAR" ? j.cur : T("sar")}`;
+  }
+  return has(j.salary) ? j.salary : "";
+}
+// The first letter of the company (or title) as a small badge.
+const initialOf = j => (has(j.company) ? j.company : j.title || "؟").replace(/^(شركة|مؤسسة|مكتب)\s+/, "").trim().charAt(0).toUpperCase();
+
+function normalise(j) {
+  return {
+    id: j.job_id || "", title: j.job_title || j.title || "", company: j.company_name || j.company || "",
+    city: j.city || "", url: j.job_url || j.url || "", posted: j.posted_date_key || j.posted_date || "",
+    mode: j.work_mode || "", type: j.employment_type || "", exp: j.experience_needed || "",
+    salary: j.salary || "", smin: j.salary_min || null, smax: j.salary_max || null, cur: j.salary_currency || "",
+  };
+}
+
+// ---------- rendering ----------
+function cardHtml(j) {
+  const tags = [];
+  if (has(j.mode)) tags.push(`<span class="tag">${escapeHtml(isAr() ? (MODE_AR[j.mode] || j.mode) : j.mode)}</span>`);
+  if (has(j.type)) tags.push(`<span class="tag">${escapeHtml(isAr() ? (TYPE_AR[j.type] || j.type) : j.type)}</span>`);
+  if (has(j.exp)) tags.push(`<span class="tag">${T("exp")}: <bdi dir="ltr">${escapeHtml(j.exp)}</bdi></span>`);
+  const sal = salaryText(j);
+  if (sal) tags.push(`<span class="tag salary"><bdi>${escapeHtml(sal)}</bdi></span>`);
+  const sub = [has(j.company) ? j.company : T("no_company"), has(j.city) ? cityLabel(j.city) : ""].filter(Boolean);
+  const page = j.id ? `./job.html?id=${encodeURIComponent(j.id)}` : safeUrl(j.url);
+  return `
+  <article class="job">
+    <div class="initial" aria-hidden="true">${escapeHtml(initialOf(j))}</div>
+    <div class="job-body">
+      <h3><a href="${escapeHtml(page)}"><bdi>${escapeHtml(niceTitle(j.title))}</bdi></a></h3>
+      <div class="sub">${sub.map(s => `<bdi>${escapeHtml(s)}</bdi>`).join(" · ")}</div>
+      ${tags.length ? `<div class="tags">${tags.join("")}</div>` : ""}
+    </div>
+    <div class="job-side">
+      <span class="when">${relativeDate(j.posted)}</span>
+      <a class="apply" href="${escapeHtml(safeUrl(j.url))}" target="_blank" rel="noopener">${T("apply")}</a>
+    </div>
+  </article>`;
+}
+
+function renderPage(reset) {
+  const box = $("results");
+  if (reset) { shown = 0; box.innerHTML = ""; }
+  $("stats").textContent = T("results", fmt(filtered.length));
+  if (!filtered.length) { box.innerHTML = `<div class="empty">${T("empty")}</div>`; $("moreWrap").hidden = true; return; }
+  let list = box.querySelector(".list");
+  if (!list) { list = document.createElement("div"); list.className = "list"; box.appendChild(list); }
+  const next = filtered.slice(shown, shown + PAGE_SIZE);
+  list.insertAdjacentHTML("beforeend", next.map(cardHtml).join(""));
+  shown += next.length;
+  const left = filtered.length - shown;
+  $("moreWrap").hidden = left <= 0;
+  $("moreBtn").textContent = T("more", fmt(left));
+}
+
+function applyFilters() {
+  const q = $("search").value.trim().toLowerCase();
+  const city = $("cityFilter").value, mode = $("modeFilter").value, type = $("typeFilter").value;
+  const salaryOnly = $("salaryOnly").checked;
+  filtered = allJobs.filter(j =>
+    (!q || j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q)) &&
+    (!city || j.city === city) && (!mode || j.mode === mode) && (!type || j.type === type) &&
+    (!salaryOnly || salaryText(j)));
+  $("resetBtn").hidden = !(q || city || mode || type || salaryOnly);
+  renderPage(true);
+}
+
+function countBy(jobs, key) {
+  const m = new Map();
+  jobs.forEach(j => { if (has(j[key])) m.set(j[key], (m.get(j[key]) || 0) + 1); });
+  return m;
+}
+const ALL_KEY = { cityFilter: "all_cities", modeFilter: "all_modes", typeFilter: "all_types" };
+function fillSelect(id, counts, labels) {
+  const sel = $(id);
+  sel.innerHTML = "";
+  const all = document.createElement("option"); all.value = ""; all.textContent = T(ALL_KEY[id]); sel.appendChild(all);
+  if (!isAr()) labels = null;
+  if (!counts.size) { sel.hidden = true; return; }
+  sel.hidden = false;
+  [...counts.entries()].sort((a, b) => b[1] - a[1]).forEach(([val, n]) => {
+    const o = document.createElement("option");
+    o.value = val; o.textContent = `${labels ? (labels[val] || val) : val} (${fmt(n)})`;
+    sel.appendChild(o);
+  });
+}
+function populate(jobs) {
+  const cities = countBy(jobs, "city");
+  cities.delete("Unknown");
+  fillSelect("cityFilter", cities, CITY_AR);
+  fillSelect("modeFilter", countBy(jobs, "mode"), MODE_AR);
+  fillSelect("typeFilter", countBy(jobs, "type"), TYPE_AR);
+  $("cityFilter").hidden = false;
+  $("salaryToggle").hidden = !jobs.some(j => salaryText(j));
+  $("statTotal").textContent = fmt(jobs.length);
+  $("kicker").textContent = T("kicker", fmt(jobs.length));
+  $("statCompanies").textContent = fmt(new Set(jobs.map(j => j.company).filter(has)).size);
+  $("statCities").textContent = fmt(cities.size);
+  const days = jobs.map(j => parseDate(j.posted)).filter(Boolean).map(d => d.getTime());
+  const newest = days.length ? Math.max(...days) : 0;
+  $("statNew").textContent = fmt(days.filter(t => t > newest - 7 * 864e5).length);
+  // Quick searches: the most common job titles right now.
+  const titles = [...countBy(jobs, "title").entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0]);
+  $("quick").innerHTML = `<span class="t">${T("quick")}</span>` +
+    titles.map(t => `<button type="button" data-q="${escapeHtml(t)}"><bdi>${escapeHtml(niceTitle(t))}</bdi></button>`).join("");
+  $("quick").hidden = !titles.length;
+  $("quick").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    $("search").value = b.dataset.q; applyFilters(); scrollToJobs();
+  }));
+}
+
+// ---------- side cards (from fields.json) ----------
+function renderSide() {
+  const fields = (FIELDS.fields || []).filter(f => f.id !== "other").slice(0, 5);
+  if (fields.length) {
+    const max = fields[0].jobs;
+    $("fieldBars").innerHTML = fields.map(f => `
+      <div class="fbar"><a href="./insights.html#${encodeURIComponent(f.id)}"><span>${escapeHtml(isAr() ? f.name_ar : f.name_en)}</span><span class="n">${fmt(f.jobs)}</span></a>
+      <div class="track"><div class="fill" style="width:${Math.max(4, 100 * f.jobs / max)}%"></div></div></div>`).join("");
+    $("marketCard").hidden = false;
+  }
+  const skills = ((FIELDS.market || {}).top_skills || []).filter(s => !s.soft).slice(0, 6);
+  if (skills.length) {
+    $("skillList").innerHTML = skills.map(s => `<span><bdi>${escapeHtml(s.name)}</bdi> ${s.pct}%</span>`).join("");
+    $("skillsCard").hidden = false;
+  }
+}
+
+function renderUpdated() {
+  $("updatedText").textContent = T("updated", LAST_MOD.toLocaleString(T("date_locale"), {
+    day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit" }));
+  $("updated").hidden = false;
+}
+function scrollToJobs() {
+  $("jobs").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+async function loadJobs() {
+  try {
+    const res = await fetch("./jobs.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error(res.status);
+    const lm = res.headers.get("Last-Modified");
+    if (lm && !isNaN(new Date(lm))) { LAST_MOD = new Date(lm); renderUpdated(); }
+    allJobs = (await res.json()).map(normalise).sort((a, b) => String(b.posted).localeCompare(String(a.posted)));
+    populate(allJobs);
+    filtered = allJobs;
+    renderPage(true);
+  } catch (e) {
+    $("results").innerHTML = `<div class="empty">${T("load_error")}</div>`;
+  }
+}
+fetch("./fields.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null)
+  .then(d => { if (d) { FIELDS = d; renderSide(); } }).catch(() => {});
+
+$("search").addEventListener("input", debounce(applyFilters, 150));
+["cityFilter", "modeFilter", "typeFilter", "salaryOnly"].forEach(id => $(id).addEventListener("change", applyFilters));
+$("searchForm").addEventListener("submit", e => { e.preventDefault(); applyFilters(); scrollToJobs(); });
+$("moreBtn").addEventListener("click", () => renderPage(false));
+$("resetBtn").addEventListener("click", () => {
+  $("search").value = ""; ["cityFilter", "modeFilter", "typeFilter"].forEach(id => $(id).value = "");
+  $("salaryOnly").checked = false; applyFilters();
+});
+$("langBtn").addEventListener("click", () => setLang(isAr() ? "en" : "ar"));
+applyStaticText();
+loadJobs();
+</script>
+</body>
+</html>
