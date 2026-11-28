@@ -1,0 +1,13 @@
+{
+ "source": "sabbar",
+ "run": "20261125T112204Z",
+ "started_at": "2026-11-25T11:22:04Z",
+ "finished_at": "2026-11-25T11:22:48Z",
+ "status": "ok",
+ "listings_seen": 15298,
+ "discovered_new": 61,
+ "scraped": 61,
+ "failed": 0,
+ "gone": 0,
+ "checkpoint_size": 45160
+}

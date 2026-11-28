@@ -1,0 +1,13 @@
+{
+ "source": "tanqeeb",
+ "run": "20261107T084921Z",
+ "started_at": "2026-11-07T08:49:21Z",
+ "finished_at": "2026-11-07T08:51:30Z",
+ "status": "no_listings",
+ "listings_seen": 0,
+ "discovered_new": 0,
+ "scraped": 0,
+ "failed": 0,
+ "gone": 0,
+ "checkpoint_size": 4497
+}
